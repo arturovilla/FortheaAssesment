@@ -1,0 +1,41 @@
+# Anything matched here is invisible to `COPY .` and to the build context —
+# both speeds up builds and keeps secrets/junk out of the final image.
+
+# ---- Virtual environment (venv-in-folder layout) ----
+bin/
+include/
+lib/
+lib64/
+share/
+pyvenv.cfg
+
+# ---- Dev-only tooling that doesn't run in production ----
+data-generator/
+
+# ---- Secrets — env values come from the orchestrator at runtime ----
+.env
+.env.local
+.env.*.local
+
+# ---- Python bytecode / caches ----
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- OS / IDE noise ----
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# ---- VCS ----
+.git/
+.gitignore
+
+# ---- Build artifacts ----
+build/
+dist/
+*.egg-info/

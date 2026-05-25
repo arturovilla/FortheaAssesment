@@ -1,0 +1,69 @@
+# Local development stack for the Forthea assessment.
+#
+# Three services:
+#   - db        PostgreSQL, the SQL store for the FastAPI backend
+#   - backend   FastAPI (Section 2)
+#   - frontend  Next.js dashboard (Section 4) — Dockerfile not yet written
+#
+# Run with:    docker compose up --build
+# Run only db: docker compose up -d db   (default workflow during dev)
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: forthea-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: forthea
+      POSTGRES_PASSWORD: forthea
+      POSTGRES_DB: forthea
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forthea -d forthea"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    container_name: forthea-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # Inherit Clerk / FRED secrets and any other non-DB config from .env.local;
+    # then override the database URLs to use the in-network `db` hostname
+    # (the .env.local values point at `localhost` for host-side tools).
+    env_file:
+      - ./backend/.env.local
+    environment:
+      DATABASE_URL: postgresql+psycopg://forthea_app:forthea_app@db:5432/forthea
+      ADMIN_DATABASE_URL: postgresql+psycopg://forthea:forthea@db:5432/forthea
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    container_name: forthea-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # Used by the Next.js app to reach the backend from the browser.
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source for hot reload, but keep container node_modules.
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  db-data:

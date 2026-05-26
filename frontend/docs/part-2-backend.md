@@ -381,12 +381,29 @@ Configuration via Pydantic Settings, driven from env vars: `DATABASE_URL`, `SNOW
 
 ## 8. Testing
 
-**Decision:** Three test layers — unit, integration, contract.
+**Decision:** Three test layers (unit, integration, contract). Unit layer is shipped and gated on container startup; the other two are designed.
 
-- **Unit tests:** Pydantic validation (good payloads, bad payloads, body-tenant-ignored), cursor encoding/decoding, tenant resolution.
-- **Integration tests:** against a Postgres test container (`testcontainers`), exercising full ingest → read flow with data from the generator.
-- **Contract test:** frozen OpenAPI snapshot fails the build if the public surface changes unexpectedly.
-- **CI:** tests run on every pull request (Part 1 §7.3).
+### 8.1 Unit tests (shipped)
+
+Live at `backend/tests/`. Three files, 15 tests, covering the three places where a regression silently breaks a contract:
+
+- **`test_cursor.py`** — opaque pagination cursor: encode/decode roundtrip, padding contract, malformed input becomes a 400, non-dict payload rejected. Protects `/performance` and `/anomalies` pagination.
+- **`test_ingest_schemas.py`** — Pydantic record schemas for the three upload types: valid payload accepted, missing required field rejected, unknown fields silently dropped (the `extra="ignore"` contract). Protects FR-2.3 / NFR-9.
+- **`test_tenant_dependency.py`** — the `current_tenant` resolver: single-tenant resolves and ignores header, multi-tenant with valid header resolves, multi-tenant without header is 400, multi-tenant with unauthorized header is 403, no-tenant user is 403. Protects NFR-1 (tenant isolation), the worst-case failure mode in the platform.
+
+**Gating:** `backend/docker-entrypoint.sh` runs `pytest tests/ -q` before alembic migrations and before uvicorn binds. `set -e` makes a failing test abort the container, so a backend that doesn't pass its own contract never accepts traffic.
+
+### 8.2 Integration tests (designed)
+
+Against a Postgres test container (`testcontainers`), exercising the full ingest → read flow with data from the generator. Not shipped; the docker-entrypoint design intentionally restricts startup tests to ones that don't need a populated database.
+
+### 8.3 Contract test (designed)
+
+Frozen OpenAPI snapshot fails the build if the public surface changes unexpectedly. Not shipped.
+
+### 8.4 CI
+
+Same `pytest tests/` runs on every pull request (Part 1 §7.3); the docker-entrypoint invocation is the second line of defense for environments that bypass CI.
 
 ## 9. Summary
 
@@ -395,7 +412,7 @@ Configuration via Pydantic Settings, driven from env vars: `DATABASE_URL`, `SNOW
 - Cursor-paginated, tenant-scoped queries over the Part 3 marts.
 - SQLAlchemy 2.0 + Alembic; Part 1 §7.1 versioning model.
 - Real Clerk auth, not a stub.
-- Three-layer test strategy; runs locally via docker-compose.
+- Unit tests shipped and gated on container startup; integration + contract layers designed.
 
 ---
 

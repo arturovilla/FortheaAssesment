@@ -1,4 +1,9 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* highlight.js theme for fenced code blocks in /system-design. Loaded last so
+   it overrides Tailwind's defaults. */
+@import "highlight.js/styles/atom-one-dark.css";
 
 /* =============================================================================
    Catppuccin Mocha palette (https://catppuccin.com/palette/).

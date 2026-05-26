@@ -3,10 +3,20 @@
 # Three services:
 #   - db        PostgreSQL, the SQL store for the FastAPI backend
 #   - backend   FastAPI (Section 2)
-#   - frontend  Next.js dashboard (Section 4) — Dockerfile not yet written
+#   - frontend  Next.js dashboard (Section 4), production-style image
 #
-# Run with:    docker compose up --build
-# Run only db: docker compose up -d db   (default workflow during dev)
+# Run only db (default workflow during dev — frontend runs via `npm run dev`):
+#   docker compose up -d db
+#
+# Run the full stack as a production-style image:
+#   set -a; source frontend/.env.local; set +a
+#   docker compose up --build
+#
+# The `source` step is needed because the frontend's NEXT_PUBLIC_* values
+# have to be present in the SHELL environment at build time — compose
+# substitutes them into build args and `next build` bakes them into the
+# client JS bundle. Without sourcing, the build args fall back to defaults
+# and Clerk won't initialise in the browser.
 
 services:
   db:
@@ -43,6 +53,10 @@ services:
       ADMIN_DATABASE_URL: postgresql+psycopg://forthea:forthea@db:5432/forthea
     ports:
       - "8000:8000"
+    # Generated JSON from `docker exec ... python data-generator/datagen.py`
+    # stays inside the container at /app/data-generator/output. Use
+    # `docker cp forthea-backend:/app/data-generator/output ./data-output`
+    # to pull it out when you want to upload via the dashboard.
     depends_on:
       db:
         condition: service_healthy
@@ -52,16 +66,21 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* values get baked into the client bundle at build
+        # time and have to come from the shell environment (see the top of
+        # this file). Defaults let the build still succeed if the shell
+        # doesn't have them, at the cost of Clerk + API access in the
+        # browser.
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
     restart: unless-stopped
-    environment:
-      # Used by the Next.js app to reach the backend from the browser.
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+    # Runtime-only secrets (CLERK_SECRET_KEY etc.) — these aren't baked
+    # into the image, they're read by the Next.js server at request time.
+    env_file:
+      - ./frontend/.env.local
     ports:
       - "3000:3000"
-    volumes:
-      # Mount source for hot reload, but keep container node_modules.
-      - ./frontend:/app
-      - /app/node_modules
     depends_on:
       - backend
 

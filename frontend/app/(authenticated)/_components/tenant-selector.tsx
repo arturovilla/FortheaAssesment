@@ -2,27 +2,28 @@
 
 // Active-tenant selector for the dashboard topbar.
 //
-// State model:
-//   - User's accessible tenants come from Clerk's publicMetadata.tenants
-//     (set per-user in the Clerk dashboard).
-//   - The currently-active tenant lives in the URL as `?tenant=apple`.
-//     URL is the source of truth — survives refresh, shareable, no global
-//     state library needed.
+// Tenant resolution (URL → Clerk fallback) lives in lib/use-active-tenant.ts
+// so the API hooks and this component agree on which tenant is "active".
+//
+// UI model:
 //   - Single-tenant users see a read-only chip (no dropdown).
 //   - Multi-tenant users (agency-staff / admin) see a dropdown with smooth
 //     fade + scale entrance.
+//   - Writing the selection updates the URL `?tenant=<slug>`, which
+//     useActiveTenant reads back. URL is the source of truth.
 
-import { useUser } from "@clerk/nextjs";
 import { Building2, Check, ChevronDown } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+
+import { useActiveTenant } from "@/lib/use-active-tenant";
 
 function titleCase(slug: string): string {
   return slug.charAt(0).toUpperCase() + slug.slice(1);
 }
 
 export function TenantSelector() {
-  const { user, isLoaded } = useUser();
+  const { active, tenants, isReady } = useActiveTenant();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -49,21 +50,17 @@ export function TenantSelector() {
     };
   }, [open]);
 
-  if (!isLoaded) {
+  if (!isReady) {
     return <div className="h-9 w-40 animate-pulse rounded-lg border border-ctp-surface0/60 bg-ctp-base/40" />;
   }
 
-  const tenants = (user?.publicMetadata?.tenants as string[] | undefined) ?? [];
-  if (tenants.length === 0) {
+  if (tenants.length === 0 || !active) {
     return (
       <div className="rounded-lg border border-ctp-red/30 bg-ctp-red/10 px-3 py-2 text-xs text-ctp-red">
         No tenant assignments
       </div>
     );
   }
-
-  const activeFromUrl = searchParams.get("tenant");
-  const active = activeFromUrl && tenants.includes(activeFromUrl) ? activeFromUrl : tenants[0];
 
   function selectTenant(t: string) {
     const params = new URLSearchParams(searchParams.toString());

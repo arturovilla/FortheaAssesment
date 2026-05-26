@@ -1,0 +1,30 @@
+# Keep the Docker build context small + reproducible.
+# Anything listed here is not sent to the daemon when running `docker build`.
+
+# Local install + build artefacts (regenerated inside the image)
+node_modules
+.next
+.turbo
+out
+
+# Local environment files (real secrets come in via build args / env_file)
+.env*
+
+# VCS + tooling
+.git
+.gitignore
+.github
+
+# Docker meta (not needed inside the image)
+Dockerfile
+.dockerignore
+
+# Editor / OS noise
+.DS_Store
+*.log
+*.tsbuildinfo
+.vscode
+.idea
+
+# Test + coverage
+coverage

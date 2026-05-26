@@ -1,4 +1,4 @@
-# Part 2 — Backend (FastAPI)
+# Part 2: Backend (FastAPI)
 
 ## 1. Overview
 
@@ -21,7 +21,11 @@ A FastAPI service between data sources (Part 3 pipeline, ad-hoc JSON uploads) an
 
 ### 1.4 Request flow
 
-Edge → middleware chain → router → store. Each routed handler talks only to the stores it needs.
+Edge → middleware chain → router → store. Each routed handler talks only to the stores it needs. The full picture has a lot going on, so we walk through it in three focused layers (edge + middleware, async upload writes, mart reads), then show the integrated topology at the end. Solid edges = data paths; dashed = control plane / handoffs that don't carry bytes.
+
+#### Edge + middleware chain
+
+What every authenticated request goes through before any router code runs. Azure Front Door terminates TLS, WAF, and rate-limits at the edge; inside the backend, three middleware steps run in order so RLS is armed before any query fires.
 
 ```mermaid
 flowchart TB
@@ -34,7 +38,102 @@ flowchart TB
             direction LR
             auth["Auth<br/>validate Clerk JWT"]
             tenant["Tenant<br/>resolve active tenant"]
-            session["Session var<br/>SET LOCAL tenant_id"]
+            session["Session var<br/>set_config(<br/>app.current_tenant)"]
+            auth --> tenant --> session
+        end
+        router["Route handler"]
+        middleware --> router
+    end
+
+    client --> fd --> backend
+
+    classDef comp fill:#1e1e2e,stroke:#585b70,stroke-width:1.5px,color:#cdd6f4,font-size:24px
+    class client,fd,auth,tenant,session,router comp
+    linkStyle default stroke:#7f849c,stroke-width:2px
+    style backend fill:#181825,stroke:#45475a,color:#a6adc8
+    style middleware fill:#313244,stroke:#45475a,color:#a6adc8
+```
+
+#### Async write path (Uploads)
+
+The uploads router orchestrates rather than carries bytes (§2.2). It writes an `uploads` row to Postgres, issues a presigned URL the client uses to PUT bytes directly to Blob, then triggers the worker DAG on commit. The dashed edges are control-plane handoffs; only the `client → blob` arrow carries the actual payload.
+
+```mermaid
+flowchart TB
+    client(["Client<br/>(Next.js dashboard)"])
+
+    subgraph backend["FastAPI Backend"]
+        ru["Uploads router"]
+    end
+
+    pg[("Postgres<br/>operational")]
+    blob[("Blob Storage")]
+    airflow["Airflow"]
+
+    client --> ru
+    ru -->|uploads row| pg
+    ru -.->|presign URL| blob
+    ru -.->|trigger DAG| airflow
+
+    client -->|PUT bytes<br/>via presigned URL| blob
+
+    classDef comp fill:#1e1e2e,stroke:#585b70,stroke-width:1.5px,color:#cdd6f4,font-size:24px
+    class client,ru,pg,blob,airflow comp
+    linkStyle default stroke:#7f849c,stroke-width:2px
+    style backend fill:#181825,stroke:#45475a,color:#a6adc8
+```
+
+#### Read paths
+
+Four read endpoints, three stores. Performance and Anomalies hit Snowflake's marts (production target; local dev points at Postgres mart views per the Implementation Scope swap). Clients reads `dim_client` straight from Postgres. Macro proxies FRED with an in-process cache.
+
+```mermaid
+flowchart TB
+    client(["Client<br/>(Next.js dashboard)"])
+
+    subgraph backend["FastAPI Backend"]
+        direction LR
+        rp["Performance"]
+        ra["Anomalies"]
+        rc["Clients"]
+        rm["Macro"]
+    end
+
+    snow[("Snowflake<br/>MARTS")]
+    pg[("Postgres<br/>operational")]
+    fred["FRED API"]
+
+    client --> backend
+    rp -->|read marts| snow
+    ra -->|read marts| snow
+    rc -->|read dim_client| pg
+    rm -->|cached proxy| fred
+
+    classDef comp fill:#1e1e2e,stroke:#585b70,stroke-width:1.5px,color:#cdd6f4,font-size:24px
+    class client,rp,ra,rc,rm,snow,pg,fred comp
+    linkStyle default stroke:#7f849c,stroke-width:2px
+    style backend fill:#181825,stroke:#45475a,color:#a6adc8
+```
+
+#### Full topology
+
+Everything together in one view. The three layers above are the easier read for understanding what each piece does; this one is the reference.
+
+```mermaid
+flowchart TB
+    %% Edge → middleware → routers → stores. Solid arrows are data paths;
+    %% dashed arrows are control-plane / handoffs that don't carry bytes.
+
+    client(["Client<br/>(Next.js dashboard)"])
+    fd["Azure Front Door<br/>TLS · WAF · rate limit"]
+
+    subgraph backend["FastAPI Backend"]
+        direction TB
+        subgraph middleware["Per-request middleware"]
+            direction LR
+            auth["Auth<br/>validate Clerk JWT"]
+            tenant["Tenant<br/>resolve active tenant"]
+            session["Session var<br/>set_config(<br/>app.current_tenant)"]
             auth --> tenant --> session
         end
 
@@ -61,28 +160,36 @@ flowchart TB
 
     client --> fd --> backend
 
-    ru --> pg
-    ru --> blob
-    ru --> airflow
-    rp --> snow
-    ra --> snow
-    rc --> pg
-    rm --> fred
+    %% Uploads router orchestrates rather than carrying bytes (§2.2):
+    %%   - writes the uploads row to Postgres
+    %%   - issues a presigned URL (control)
+    %%   - triggers the worker DAG on commit (control)
+    ru -->|uploads row| pg
+    ru -.->|presign URL| blob
+    ru -.->|trigger DAG| airflow
 
-    classDef comp fill:#ffffff,stroke:#5b6470,stroke-width:1.5px,color:#1a1f29,font-size:18px
+    %% The actual byte path bypasses the API entirely (§2.2).
+    client -.->|PUT bytes<br/>via presigned URL| blob
+
+    rp -->|read marts| snow
+    ra -->|read marts| snow
+    rc -->|read dim_client| pg
+    rm -->|cached proxy| fred
+
+    classDef comp fill:#1e1e2e,stroke:#585b70,stroke-width:1.5px,color:#cdd6f4,font-size:28px
     class client,fd,auth,tenant,session,ru,rp,ra,rc,rm,pg,snow,blob,airflow,fred comp
-    linkStyle default stroke:#7c8694,stroke-width:2px
-    style backend fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
-    style middleware fill:#e1e4e9,stroke:#9aa4b2,color:#1a1f29
-    style routers fill:#e1e4e9,stroke:#9aa4b2,color:#1a1f29
-    style stores fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
+    linkStyle default stroke:#7f849c,stroke-width:2px
+    style backend fill:#181825,stroke:#45475a,color:#a6adc8
+    style middleware fill:#313244,stroke:#45475a,color:#a6adc8
+    style routers fill:#313244,stroke:#45475a,color:#a6adc8
+    style stores fill:#181825,stroke:#45475a,color:#a6adc8
 ```
 
-Three things this diagram makes visible at a glance:
+Three things the full topology makes visible at a glance:
 
 - **The middleware chain** (auth → tenant → session var) runs on every authenticated request, in order. The session variable is set before any router code runs, so RLS is already armed by the time a query fires.
 - **Routers are thin.** Each handler maps to one or two stores; no router talks to everything.
-- **The stores are heterogeneous on purpose.** Uploads write to Postgres + Blob + Airflow; mart reads hit Snowflake; the macro endpoint proxies FRED.
+- **The stores are heterogeneous on purpose.** Uploads coordinate Postgres + Blob + Airflow (bytes go client → blob direct); mart reads hit Snowflake; the macro endpoint proxies FRED.
 
 ### 1.5 Authentication
 
@@ -103,17 +210,24 @@ Three things this diagram makes visible at a glance:
 
 ### 2.1 Endpoint inventory
 
+All paths below are served by the FastAPI backend. In local dev that's
+`http://localhost:8000` (the Next.js dashboard runs separately on
+`:3000`). Endpoints tagged with a <span style="display:inline-block;padding:1px 9px;border:1px solid #fab387;border-radius:9999px;color:#fab387;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Local dev</span> pill exist only in the local stack and are absent
+from the production deployment.
+
 | Endpoint                       | Method | Behavior                                    | Notes                                                                                            |
 | ------------------------------ | ------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `POST /uploads/initiate`       | Write  | Returns `{ upload_id, presigned_url }`      | Body: `{ type: "google_ads" \| "meta" \| "clients" }`. Short-lived presigned blob URL.           |
+| `PUT  /uploads/{id}/blob`      | Write  | Returns `204`; writes upload bytes to blob  | <span style="display:inline-block;padding:1px 9px;border:1px solid #fab387;border-radius:9999px;color:#fab387;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Local dev</span> Stand-in for an Azure SAS URL. In prod, clients PUT directly to blob storage and this route does not exist on the backend. |
 | `POST /uploads/{id}/commit`    | Write  | Returns `202` with `{ status: processing }` | Signals upload complete; triggers async ingest                                                   |
-| `GET /uploads/{id}`            | Read   | Returns `{ status, accepted, rejected }`    | Polled by client; status = `pending` \| `processing` \| `succeeded` \| `failed`                  |
-| `GET /clients`                 | Read   | `dim_client`                                | Client list for the dashboard selector                                                           |
+| `GET /uploads/{id}`            | Read   | Returns `{ status, accepted, rejected, error, type, created_at, processed_at }` | Polled by client; status = `pending` \| `processing` \| `succeeded` \| `failed`                  |
+| `GET /clients`                 | Read   | `dim_client` (+ per-client Google / Meta campaign counts) | Client list for the dashboard selector                                                |
 | `GET /performance`             | Read   | `mart_client_daily_performance`             | Daily client-level rows; paginated + filtered                                                    |
 | `GET /anomalies`               | Read   | `mart_client_daily_anomalies`               | Flagged anomalies for the dashboard                                                              |
 | `GET /macro`                   | Read   | FRED API (cached)                           | Dashboard enrichment data                                                                        |
-| `GET /health`                  | Read   | —                                           | Liveness check, no auth                                                                          |
-| `GET /docs`                    | Read   | —                                           | OpenAPI (auto-generated by FastAPI)                                                              |
+| `GET /me`                      | Read   | Returns `{ user_id, email, active_tenant, available_tenants }` | Auth-wiring smoke test. Confirms the JWT validates and tenant resolution settled correctly. The dashboard's `useMe` hook calls this. |
+| `GET /health`                  | Read   | Returns `{ status, database, env }`         | Liveness check, no auth                                                                          |
+| `GET /docs`                    | Read   | Renders Swagger UI                          | OpenAPI (auto-generated by FastAPI). Open it at [http://localhost:8000/docs](http://localhost:8000/docs) when the backend is running locally. |
 
 ### 2.2 The single async ingest pattern
 
@@ -124,7 +238,7 @@ One pattern for all payloads, any size, any schema:
 - **`POST /uploads/{id}/commit`** triggers the Airflow `uploads_ingest_dag`, returns `202`.
 - **`GET /uploads/{id}`** for status.
 
-Route handlers are short — fast work only. **No Pydantic dispatch in the route.** The schema `type` is stored on the `uploads` row at `initiate`; the worker reads the row and picks the correct Pydantic model (`GoogleAdsRecord`, `MetaAdsRecord`, or `ClientRecord`) at validation time.
+Route handlers are short. Fast work only. **No Pydantic dispatch in the route.** The schema `type` is stored on the `uploads` row at `initiate`; the worker reads the row and picks the correct Pydantic model (`GoogleAdsRecord`, `MetaAdsRecord`, or `ClientRecord`) at validation time.
 
 ```python
 class InitiateRequest(BaseModel):
@@ -151,7 +265,7 @@ async def commit(
     return {"upload_id": upload_id, "status": "processing"}
 ```
 
-The worker (`uploads_ingest_dag`) reads the blob, selects the Pydantic model by the upload row's `type`, validates, writes records to the right staging table, writes failures to dead-letter, updates the upload row. Validation stays server-side and authoritative — it just runs in the worker, not in the request handler.
+The worker (`uploads_ingest_dag`) reads the blob, selects the Pydantic model by the upload row's `type`, validates each record, bulk-inserts the valid ones into the matching staging table, and updates the uploads row with `accepted` / `rejected` counts plus the first error message. Validation stays server-side and authoritative; it just runs in the worker, not in the request handler. (A production deployment would also push rejected rows to a dead-letter table per Part 3 §6.4; the local worker keeps failures as counts on the uploads row.)
 
 **Why store `type` on the `uploads` row?**
 

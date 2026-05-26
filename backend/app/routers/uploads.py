@@ -161,7 +161,9 @@ def commit(
     db.commit()
 
     # Production swap: trigger an Airflow DAG run instead, with the upload_id as conf.
-    background_tasks.add_task(process_upload, upload_id)
+    # tenant_id is passed in because the worker's session is RLS-subject (forthea_app)
+    # and needs to arm `app.current_tenant` before it can read the uploads row.
+    background_tasks.add_task(process_upload, upload_id, tenant_id)
     return CommitResponse(upload_id=upload_id, status=UploadStatus.processing)
 
 

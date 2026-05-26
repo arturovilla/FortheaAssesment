@@ -2,10 +2,12 @@
 #
 # FastAPI backend image.
 #
-# What goes in:    alembic/, alembic.ini, app/, scripts/, requirements.txt
-# What stays out:  data-generator/  (dev-only seeding tool, not a service)
-#                  bin/, lib/, ...  (the venv that lives at backend/ root)
-#                  .env, .env.local (secrets — passed via env at runtime)
+# What goes in:    alembic/, alembic.ini, app/, scripts/, requirements.txt,
+#                  data-generator/ (source only, so it can be run via
+#                  `docker exec -it forthea-backend python data-generator/...`)
+# What stays out:  bin/, lib/, ...  (the venv that lives at backend/ root)
+#                  .env, .env.local (secrets, passed via env at runtime)
+#                  data-generator/output/ (generated JSON, bind-mounted instead)
 #                  See .dockerignore for the full list.
 #
 # Default command runs uvicorn. For the migration job (Part 2 §6, prod path),
@@ -29,10 +31,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy production code only. .dockerignore drops everything that doesn't ship.
-COPY alembic.ini ./alembic.ini
-COPY alembic/    ./alembic/
-COPY app/        ./app/
-COPY scripts/    ./scripts/
+COPY alembic.ini      ./alembic.ini
+COPY alembic/         ./alembic/
+COPY app/             ./app/
+COPY scripts/         ./scripts/
+COPY data-generator/  ./data-generator/
 
 # Run as a non-root user — minor but standard production hygiene.
 RUN useradd -m -u 1000 app && chown -R app:app /app

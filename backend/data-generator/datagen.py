@@ -1,36 +1,47 @@
 """
 datagen.py — generate deterministic synthetic data for the Forthea demo.
 
-Produces TWO sets of JSON files in one run:
+Output structure (one JSON per upload-ready file, organised by tenant):
 
-  output/seed/    — used by load.py to seed the database:
-      tenants.json          → operational `tenants` rows
-      dim_client.json       → staging `dim_client` (campaign-to-client mapping)
-      stg_google_ads.json   → staging `stg_google_ads` (90 days of history)
-      stg_meta_ads.json     → staging `stg_meta_ads`   (90 days of history)
+    output/
+    ├── tenants.json              # operational `tenants` rows (bootstrap)
+    ├── apple/
+    │   ├── clients.json          # dim_client mappings for Apple
+    │   ├── google_ads.json       # 90 days of Google Ads (Apple)
+    │   └── meta.json             # 90 days of Meta (Apple)
+    ├── google/  (same three files)
+    └── disney/  (same three files)
 
-  output/ingest/  — used to test the FastAPI JSON ingest endpoints later:
-      google_ads.json       → 1 day of fresh data (today)
-      meta.json             → 1 day of fresh data (today)
-      clients.json          → a few additional campaign-to-client mappings
+Why this shape (vs the old seed/ingest split):
 
-The seed set is "history already in the warehouse." The ingest set is "new data
-arriving via the API." Together they exercise both the loader and the
-upload-ingest path.
+  - The upload UI binds tenant_id from the authenticated request, so each
+    file is naturally tenant-scoped. One folder per tenant = one upload
+    session for that tenant.
+  - The three files inside a tenant folder match the three upload `type`
+    options in the dashboard: clients, google_ads, meta.
+  - `tenants.json` lives at the root because the operational `tenants`
+    table isn't tenant-scoped — it's the registry the others FK to.
 
-Always produces data for three tenants: apple, google, disney. Tenant IDs are
-slug strings (not UUIDs) so they match Clerk's `publicMetadata`.
+Two paths to populate the DB:
+
+  - Quick:  python load.py                       (bulk-load everything direct)
+  - Demo:   python load.py --bootstrap           (just tenants), then upload
+            each file through the dashboard's Upload data button.
+
+Always produces data for three tenants: apple, google, disney. Tenant IDs
+are slug strings (not UUIDs) so they match Clerk's `publicMetadata.tenants`.
 
 Run:
-    python datagen.py                          # defaults: seed 42, 90 days of history
-    python datagen.py --seed 7 --days 30       # 30 days, different seed
-    python datagen.py --output-dir /tmp/data   # custom output directory
+    python datagen.py                          # defaults: seed 42, 90 days
+    python datagen.py --seed 7 --days 30
+    python datagen.py --output-dir /tmp/data
 """
 
 from __future__ import annotations
 
 import json
 import random
+import shutil
 from dataclasses import asdict, dataclass
 from datetime import date, timedelta
 from pathlib import Path
@@ -38,12 +49,16 @@ from typing import Iterable
 
 import typer
 
+# Default output dir is anchored to this script's location, so the command
+# works regardless of CWD. Especially important inside the backend container
+# where users invoke it as `docker exec -it forthea-backend python data-generator/datagen.py`.
+DEFAULT_OUTPUT_DIR = Path(__file__).parent / "output"
+
 # =============================================================================
 # Constants — the deterministic shape of the demo
 # =============================================================================
 
-# Tenant IDs are slugs that must match Clerk's publicMetadata.tenant_id.
-# Tenant display name is shown in the dashboard.
+# Tenant IDs are slugs that must match Clerk's publicMetadata.tenants.
 TENANTS: list[dict[str, str]] = [
     {"id": "apple",  "name": "Apple"},
     {"id": "google", "name": "Google"},
@@ -55,7 +70,7 @@ TENANTS: list[dict[str, str]] = [
 #   ctr               — click-through rate (clicks / impressions)
 #   cvr               — conversion rate (conversions / clicks)
 #   cpc               — cost per click (USD)
-#   expected_revenue  — Client Table's expected_revenue_from_acquisition
+#   expected_revenue  — dim_client.expected_revenue_from_acquisition
 #   volume            — multiplier on daily impressions (relative size)
 TENANT_BASELINES: dict[str, dict[str, float]] = {
     "apple":  {"ctr": 0.045, "cvr": 0.085, "cpc": 2.50, "expected_revenue": 120.00, "volume": 1.3},
@@ -63,16 +78,15 @@ TENANT_BASELINES: dict[str, dict[str, float]] = {
     "disney": {"ctr": 0.038, "cvr": 0.072, "cpc": 1.80, "expected_revenue":  60.00, "volume": 0.7},
 }
 
-# Google Ads campaign types from the brief schema
+# Google Ads campaign types from the brief schema.
 GOOGLE_CAMPAIGN_TYPES: list[str] = ["SEARCH", "DISPLAY", "PERFORMANCE_MAX", "SHOPPING", "VIDEO"]
 GOOGLE_CAMPAIGNS_PER_TENANT: int = 4
 
 # Meta campaign names per tenant (just labels; the join key is the name itself).
 META_CAMPAIGN_LABELS: list[str] = ["Awareness", "Conversion", "Retention"]
-META_CAMPAIGNS_PER_TENANT: int = len(META_CAMPAIGN_LABELS)
 
-# A representative subset of US Nielsen DMAs. Meta's full list is ~210; a campaign
-# typically targets a small subset.
+# A representative subset of US Nielsen DMAs. Meta's full list is ~210; a
+# campaign typically targets a small subset.
 META_DMAS: list[str] = [
     "501-New York",
     "803-Los Angeles",
@@ -88,16 +102,11 @@ META_DMAS: list[str] = [
     "528-Miami-Ft. Lauderdale",
 ]
 
-# Meta result types. Only the conversion-style ones are counted toward CPA/ROAS
-# by the Part 3 §9.3 SQL (meta_conversion_types CTE).
+# Meta result types. Only the conversion-style ones are counted toward
+# CPA/ROAS by the Part 3 §9.3 SQL (meta_conversion_types CTE).
 META_RESULT_TYPES_CONVERSION: list[str] = ["offsite_conversion", "onsite_conversion", "lead"]
 META_RESULT_TYPES_OTHER: list[str] = ["link_click"]
 META_RESULT_TYPES_ALL: list[str] = META_RESULT_TYPES_CONVERSION + META_RESULT_TYPES_OTHER
-
-# Output layout
-SEED_SUBDIR: str = "seed"
-INGEST_SUBDIR: str = "ingest"
-INGEST_DAYS: int = 1
 
 
 # =============================================================================
@@ -128,7 +137,12 @@ class ClientRecord:
 
 @dataclass
 class GoogleAdsRecord:
-    """Row in `staging.stg_google_ads` (Part 3 §3.2)."""
+    """Row in `staging.stg_google_ads` (Part 3 §3.2).
+
+    `tenant_id` is included for self-documentation but is ignored by the
+    upload worker — the authoritative tenant comes from the authenticated
+    request (Part 2 §3 tenant_id rule).
+    """
     tenant_id: str
     campaign_id: str
     campaign_type: str
@@ -176,197 +190,159 @@ def weekly_seasonality(d: date) -> float:
 
 def write_json(path: Path, records: list) -> None:
     """Serialize records to a pretty-printed JSON array."""
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps([asdict(r) for r in records], indent=2, default=str))
 
 
 # =============================================================================
-# Generators — one function per output dataset
+# Per-tenant data builders
 # =============================================================================
 
-def build_tenants() -> list[TenantRecord]:
-    """One row per tenant for the operational store."""
-    return [TenantRecord(id=t["id"], name=t["name"]) for t in TENANTS]
-
-
-def build_clients() -> tuple[list[ClientRecord], dict[str, list[str]], dict[str, list[str]]]:
-    """Build dim_client rows + return campaign-id lookups for the ad generators.
+def build_tenant_clients(tenant: dict[str, str]) -> tuple[
+    list[ClientRecord], list[str], list[str]
+]:
+    """Build dim_client rows for one tenant + return campaign-id lookups.
 
     Returns:
-        clients: dim_client rows (one per campaign mapping)
-        google_campaigns_by_tenant: tenant_id → list of Google campaign IDs
-        meta_campaigns_by_tenant:   tenant_id → list of Meta campaign names
+        clients: dim_client rows for this tenant (1 per campaign mapping)
+        google_ids: list of Google Ads campaign IDs for this tenant
+        meta_names: list of Meta campaign names for this tenant
     """
+    tid = tenant["id"]
+    baseline = TENANT_BASELINES[tid]
+
+    # Stable campaign identifiers — deterministic across runs.
+    google_ids = [f"GA-{tid}-{i:03d}" for i in range(1, GOOGLE_CAMPAIGNS_PER_TENANT + 1)]
+    meta_names = [f"{tenant['name']} - {label}" for label in META_CAMPAIGN_LABELS]
+
     clients: list[ClientRecord] = []
-    google_campaigns: dict[str, list[str]] = {}
-    meta_campaigns: dict[str, list[str]] = {}
-
-    for tenant in TENANTS:
-        tid = tenant["id"]
-        baseline = TENANT_BASELINES[tid]
-
-        # Stable campaign identifiers — deterministic across runs.
-        google_ids = [f"GA-{tid}-{i:03d}" for i in range(1, GOOGLE_CAMPAIGNS_PER_TENANT + 1)]
-        meta_names = [f"{tenant['name']} - {label}" for label in META_CAMPAIGN_LABELS]
-
-        google_campaigns[tid] = google_ids
-        meta_campaigns[tid] = meta_names
-
-        # One dim_client row per Google campaign + one per Meta campaign.
-        for ga_id in google_ids:
-            clients.append(ClientRecord(
-                client_id=tid,
-                client_name=tenant["name"],
-                ga_campaign_id=ga_id,
-                meta_campaign_name=None,
-                expected_revenue_from_acquisition=baseline["expected_revenue"],
-            ))
-        for name in meta_names:
-            clients.append(ClientRecord(
-                client_id=tid,
-                client_name=tenant["name"],
-                ga_campaign_id=None,
-                meta_campaign_name=name,
-                expected_revenue_from_acquisition=baseline["expected_revenue"],
-            ))
-
-    return clients, google_campaigns, meta_campaigns
-
-
-def build_ingest_clients() -> list[ClientRecord]:
-    """Additional dim_client mappings for the ingest test set.
-
-    Different campaign IDs/names than the seed so they don't conflict on re-ingest.
-    One new Google campaign + one new Meta campaign per tenant = 6 rows total.
-    """
-    records: list[ClientRecord] = []
-    for tenant in TENANTS:
-        tid = tenant["id"]
-        baseline = TENANT_BASELINES[tid]
-        # New Google campaign ID (seed used 001-004; ingest uses 005)
-        records.append(ClientRecord(
+    for ga_id in google_ids:
+        clients.append(ClientRecord(
             client_id=tid,
             client_name=tenant["name"],
-            ga_campaign_id=f"GA-{tid}-005",
+            ga_campaign_id=ga_id,
             meta_campaign_name=None,
             expected_revenue_from_acquisition=baseline["expected_revenue"],
         ))
-        # New Meta campaign label (seed used Awareness/Conversion/Retention; ingest uses Brand)
-        records.append(ClientRecord(
+    for name in meta_names:
+        clients.append(ClientRecord(
             client_id=tid,
             client_name=tenant["name"],
             ga_campaign_id=None,
-            meta_campaign_name=f"{tenant['name']} - Brand",
+            meta_campaign_name=name,
             expected_revenue_from_acquisition=baseline["expected_revenue"],
         ))
-    return records
+
+    return clients, google_ids, meta_names
 
 
-def generate_google_ads(
+def generate_google_ads_for_tenant(
     rng: random.Random,
-    google_campaigns_by_tenant: dict[str, list[str]],
+    tenant_id: str,
+    campaign_ids: list[str],
     start: date,
     end: date,
     anomaly_rate: float,
 ) -> list[GoogleAdsRecord]:
     """One row per (campaign, day). Funnel math: impressions ≥ clicks ≥ conversions."""
     records: list[GoogleAdsRecord] = []
+    baseline = TENANT_BASELINES[tenant_id]
 
-    for tid, campaign_ids in google_campaigns_by_tenant.items():
-        baseline = TENANT_BASELINES[tid]
-        for campaign_id in campaign_ids:
-            # Each campaign keeps one type for its lifetime.
-            campaign_type = rng.choice(GOOGLE_CAMPAIGN_TYPES)
-            for d in daterange(start, end):
-                base_impressions = 5_000 * baseline["volume"] * weekly_seasonality(d)
-                impressions = int(jitter(rng, base_impressions, 0.25))
+    for campaign_id in campaign_ids:
+        # Each campaign keeps one type for its lifetime.
+        campaign_type = rng.choice(GOOGLE_CAMPAIGN_TYPES)
+        for d in daterange(start, end):
+            base_impressions = 5_000 * baseline["volume"] * weekly_seasonality(d)
+            impressions = int(jitter(rng, base_impressions, 0.25))
+            ctr = jitter(rng, baseline["ctr"], 0.30)
+            cvr = jitter(rng, baseline["cvr"], 0.30)
+            cpc = jitter(rng, baseline["cpc"], 0.15)
+
+            clicks = int(impressions * ctr)
+            conversions = round(clicks * cvr, 2)
+            spend = round(clicks * cpc, 2)
+
+            # Anomaly injection — small fraction of rows get a deliberate
+            # problem for the Part 3 §10 anomaly SQL to catch.
+            if rng.random() < anomaly_rate:
+                kind = rng.choice(["spend_spike", "zero_conversions"])
+                if kind == "spend_spike":
+                    spend = round(spend * rng.uniform(3.5, 5.0), 2)
+                elif kind == "zero_conversions":
+                    conversions = 0.0
+
+            records.append(GoogleAdsRecord(
+                tenant_id=tenant_id,
+                campaign_id=campaign_id,
+                campaign_type=campaign_type,
+                date=d.isoformat(),
+                spend=spend,
+                impressions=impressions,
+                clicks=clicks,
+                conversions=conversions,
+            ))
+
+    return records
+
+
+def generate_meta_ads_for_tenant(
+    rng: random.Random,
+    tenant_id: str,
+    campaign_names: list[str],
+    start: date,
+    end: date,
+    anomaly_rate: float,
+) -> list[MetaAdsRecord]:
+    """One row per (campaign, DMA, day). Each campaign targets a stable DMA subset."""
+    records: list[MetaAdsRecord] = []
+    baseline = TENANT_BASELINES[tenant_id]
+
+    for campaign_name in campaign_names:
+        # A campaign targets a stable subset of DMAs.
+        dmas = rng.sample(META_DMAS, k=rng.randint(3, 7))
+        # The campaign's optimisation goal (result_type) is stable for its lifetime.
+        result_type = rng.choice(META_RESULT_TYPES_ALL)
+
+        for d in daterange(start, end):
+            for dma in dmas:
+                base_reach = 1_500 * baseline["volume"] * weekly_seasonality(d)
+                reach = int(jitter(rng, base_reach, 0.30))
+                # impressions > reach (frequency).
+                impressions = int(reach * jitter(rng, 1.4, 0.20))
                 ctr = jitter(rng, baseline["ctr"], 0.30)
                 cvr = jitter(rng, baseline["cvr"], 0.30)
                 cpc = jitter(rng, baseline["cpc"], 0.15)
 
                 clicks = int(impressions * ctr)
-                conversions = round(clicks * cvr, 2)
                 spend = round(clicks * cpc, 2)
 
-                # Anomaly injection — small fraction of rows get a deliberate problem
-                # for Part 3 §10 anomaly SQL to catch.
+                # `results` depends on result_type — only conversion-types are
+                # acquisitions per Part 3 §9.3's `meta_conversion_types` CTE.
+                if result_type in META_RESULT_TYPES_CONVERSION:
+                    results = round(clicks * cvr, 2)
+                else:
+                    # e.g. link_click: results == clicks
+                    results = float(clicks)
+
                 if rng.random() < anomaly_rate:
-                    kind = rng.choice(["spend_spike", "zero_conversions"])
+                    kind = rng.choice(["spend_spike", "zero_results"])
                     if kind == "spend_spike":
                         spend = round(spend * rng.uniform(3.5, 5.0), 2)
-                    elif kind == "zero_conversions":
-                        conversions = 0.0
+                    elif kind == "zero_results":
+                        results = 0.0
 
-                records.append(GoogleAdsRecord(
-                    tenant_id=tid,
-                    campaign_id=campaign_id,
-                    campaign_type=campaign_type,
-                    date=d.isoformat(),
+                records.append(MetaAdsRecord(
+                    tenant_id=tenant_id,
+                    campaign_name=campaign_name,
+                    dma=dma,
+                    day=d.isoformat(),
                     spend=spend,
+                    reach=reach,
                     impressions=impressions,
                     clicks=clicks,
-                    conversions=conversions,
+                    result_type=result_type,
+                    results=results,
                 ))
-
-    return records
-
-
-def generate_meta_ads(
-    rng: random.Random,
-    meta_campaigns_by_tenant: dict[str, list[str]],
-    start: date,
-    end: date,
-    anomaly_rate: float,
-) -> list[MetaAdsRecord]:
-    """One row per (campaign, DMA, day). Each campaign targets a subset of DMAs."""
-    records: list[MetaAdsRecord] = []
-
-    for tid, campaign_names in meta_campaigns_by_tenant.items():
-        baseline = TENANT_BASELINES[tid]
-        for campaign_name in campaign_names:
-            # A campaign targets a stable subset of DMAs (per data-generator doc §5).
-            dmas = rng.sample(META_DMAS, k=rng.randint(3, 7))
-            # The campaign's optimization goal (result_type) is stable for its lifetime.
-            result_type = rng.choice(META_RESULT_TYPES_ALL)
-
-            for d in daterange(start, end):
-                for dma in dmas:
-                    base_reach = 1_500 * baseline["volume"] * weekly_seasonality(d)
-                    reach = int(jitter(rng, base_reach, 0.30))
-                    impressions = int(reach * jitter(rng, 1.4, 0.20))  # impressions > reach (frequency)
-                    ctr = jitter(rng, baseline["ctr"], 0.30)
-                    cvr = jitter(rng, baseline["cvr"], 0.30)
-                    cpc = jitter(rng, baseline["cpc"], 0.15)
-
-                    clicks = int(impressions * ctr)
-                    spend = round(clicks * cpc, 2)
-
-                    # `results` depends on result_type — only conversion-types are
-                    # acquisitions per Part 3 §9.3's `meta_conversion_types` CTE.
-                    if result_type in META_RESULT_TYPES_CONVERSION:
-                        results = round(clicks * cvr, 2)
-                    else:
-                        # e.g. link_click: results == clicks
-                        results = float(clicks)
-
-                    if rng.random() < anomaly_rate:
-                        kind = rng.choice(["spend_spike", "zero_results"])
-                        if kind == "spend_spike":
-                            spend = round(spend * rng.uniform(3.5, 5.0), 2)
-                        elif kind == "zero_results":
-                            results = 0.0
-
-                    records.append(MetaAdsRecord(
-                        tenant_id=tid,
-                        campaign_name=campaign_name,
-                        dma=dma,
-                        day=d.isoformat(),
-                        spend=spend,
-                        reach=reach,
-                        impressions=impressions,
-                        clicks=clicks,
-                        result_type=result_type,
-                        results=results,
-                    ))
 
     return records
 
@@ -381,59 +357,61 @@ app = typer.Typer(add_completion=False, help="Generate synthetic Forthea data.")
 @app.command()
 def main(
     seed: int = typer.Option(42, help="RNG seed; same seed → same dataset."),
-    days: int = typer.Option(90, help="How many days of history in the seed set."),
-    output_dir: Path = typer.Option(Path("output"), help="Where to write JSON files."),
+    days: int = typer.Option(90, help="How many days of history to generate per tenant."),
+    output_dir: Path = typer.Option(DEFAULT_OUTPUT_DIR, help="Where to write JSON files."),
     anomaly_rate: float = typer.Option(0.02, help="Fraction of campaign-days with injected anomalies."),
+    clean: bool = typer.Option(True, "--clean/--no-clean", help="Wipe output_dir before writing."),
 ) -> None:
-    """Generate the seed set (history) and the ingest set (test fixtures for the API)."""
+    """Generate per-tenant JSON files ready to be uploaded via the dashboard."""
     rng = random.Random(seed)
     today = date.today()
+    start = today - timedelta(days=days - 1)
+    end = today
 
-    # ---- Seed set: history up to yesterday, used by load.py ----
-    seed_start = today - timedelta(days=days)
-    seed_end = today - timedelta(days=1)
-    seed_dir = output_dir / SEED_SUBDIR
-    seed_dir.mkdir(parents=True, exist_ok=True)
+    # Wipe contents but NOT the directory itself — when running inside the
+    # backend container, `output/` is a bind mount from the host, and
+    # deleting the mount point raises EBUSY.
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if clean:
+        for item in output_dir.iterdir():
+            if item.is_dir():
+                shutil.rmtree(item)
+            else:
+                item.unlink()
 
-    tenants = build_tenants()
-    clients, google_campaigns, meta_campaigns = build_clients()
-    seed_google = generate_google_ads(rng, google_campaigns, seed_start, seed_end, anomaly_rate)
-    seed_meta = generate_meta_ads(rng, meta_campaigns, seed_start, seed_end, anomaly_rate)
+    # Operational tenants registry (bootstrap, FK target for everything else).
+    tenants = [TenantRecord(id=t["id"], name=t["name"]) for t in TENANTS]
+    write_json(output_dir / "tenants.json", tenants)
 
-    write_json(seed_dir / "tenants.json", tenants)
-    write_json(seed_dir / "dim_client.json", clients)
-    write_json(seed_dir / "stg_google_ads.json", seed_google)
-    write_json(seed_dir / "stg_meta_ads.json", seed_meta)
+    counts: list[tuple[str, int, int, int]] = []
+    for tenant in TENANTS:
+        tid = tenant["id"]
+        clients, google_ids, meta_names = build_tenant_clients(tenant)
+        google_rows = generate_google_ads_for_tenant(
+            rng, tid, google_ids, start, end, anomaly_rate,
+        )
+        meta_rows = generate_meta_ads_for_tenant(
+            rng, tid, meta_names, start, end, anomaly_rate,
+        )
 
-    # ---- Ingest set: 1 day of fresh data (today), used to test the API ----
-    ingest_start = today
-    ingest_end = today + timedelta(days=INGEST_DAYS - 1)
-    ingest_dir = output_dir / INGEST_SUBDIR
-    ingest_dir.mkdir(parents=True, exist_ok=True)
+        tenant_dir = output_dir / tid
+        write_json(tenant_dir / "clients.json", clients)
+        write_json(tenant_dir / "google_ads.json", google_rows)
+        write_json(tenant_dir / "meta.json", meta_rows)
 
-    ingest_google = generate_google_ads(rng, google_campaigns, ingest_start, ingest_end, anomaly_rate)
-    ingest_meta = generate_meta_ads(rng, meta_campaigns, ingest_start, ingest_end, anomaly_rate)
-    ingest_clients = build_ingest_clients()
+        counts.append((tid, len(clients), len(google_rows), len(meta_rows)))
 
-    write_json(ingest_dir / "google_ads.json", ingest_google)
-    write_json(ingest_dir / "meta.json", ingest_meta)
-    write_json(ingest_dir / "clients.json", ingest_clients)
-
-    # ---- Report ----
+    # Report
     typer.echo(f"Seed:         {seed}")
     typer.echo(f"Anomaly rate: {anomaly_rate:.1%}")
-    typer.echo(f"Tenants:      {[t['id'] for t in TENANTS]}")
+    typer.echo(f"Window:       {start} → {end} ({days} days)")
     typer.echo("")
-    typer.echo(f"Seed set ({seed_start} → {seed_end}, {days} days):")
-    typer.echo(f"  {len(tenants):>6}  seed/tenants.json")
-    typer.echo(f"  {len(clients):>6}  seed/dim_client.json")
-    typer.echo(f"  {len(seed_google):>6}  seed/stg_google_ads.json")
-    typer.echo(f"  {len(seed_meta):>6}  seed/stg_meta_ads.json")
+    typer.echo(f"{len(tenants):>6}  tenants.json")
     typer.echo("")
-    typer.echo(f"Ingest set ({ingest_start} → {ingest_end}, {INGEST_DAYS} day):")
-    typer.echo(f"  {len(ingest_google):>6}  ingest/google_ads.json")
-    typer.echo(f"  {len(ingest_meta):>6}  ingest/meta.json")
-    typer.echo(f"  {len(ingest_clients):>6}  ingest/clients.json")
+    typer.echo(f"  {'tenant':<8}  {'clients':>8}  {'google_ads':>10}  {'meta':>8}")
+    typer.echo(f"  {'-' * 8}  {'-' * 8}  {'-' * 10}  {'-' * 8}")
+    for tid, n_clients, n_google, n_meta in counts:
+        typer.echo(f"  {tid:<8}  {n_clients:>8}  {n_google:>10}  {n_meta:>8}")
     typer.echo("")
     typer.echo(f"→ {output_dir.resolve()}")
 

@@ -8,71 +8,74 @@ The following requirements are extracted from the assessment brief. They are spl
 
 ### Functional Requirements
 
+Every requirement is tagged with its status pill and a link to the doc section
+where it's spelled out.
+
 #### Section 1 — Architecture & Systems Design
 
-- **FR-1.1** Design a multi-tenant analytics system that lets a user monitor and analyze website traffic data for their own website.
-- **FR-1.2** Source traffic data from Google Analytics 4 (GA4).
-- **FR-1.3** Front end built with React / Next.js.
-- **FR-1.4** Backend built with Python or Node.
-- **FR-1.5** Persist data into a single unified data warehouse.
-- **FR-1.6** Deliver architecture diagrams and detailed written reasoning.
-- **FR-1.7** Define the pipeline using Infrastructure as Code (IaC).
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-1.1** Design a multi-tenant analytics system that lets a user monitor and analyze website traffic data for their own website. — *spelled out in [Part 1 §2 Multi-Tenancy](frontend/docs/part-1-architecture.md#2-multi-tenancy--tenant-isolation)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-1.2** Source traffic data from Google Analytics 4 (GA4). — *spelled out in [Part 1 §3 Data Ingestion](frontend/docs/part-1-architecture.md#3-data-ingestion--flow)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-1.3** Front end built with React / Next.js. — *spelled out in [Part 4 §1 Overview](frontend/docs/part-4-frontend.md#1-overview)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-1.4** Backend built with Python or Node. — *spelled out in [Part 2 §1 Overview](frontend/docs/part-2-backend.md#1-overview)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-1.5** Persist data into a single unified data warehouse. — *spelled out in [Part 1 §4 Unified Data Warehouse](frontend/docs/part-1-architecture.md#4-unified-data-warehouse)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-1.6** Deliver architecture diagrams and detailed written reasoning. — *spelled out in [Part 1 §1 High-Level Architecture](frontend/docs/part-1-architecture.md#1-high-level-architecture)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-1.7** Define the pipeline using Infrastructure as Code (IaC). — *spelled out in [Part 1 §6 Infrastructure as Code](frontend/docs/part-1-architecture.md#6-infrastructure-as-code)*
 
 #### Section 2 — Python Backend
 
-- **FR-2.1** Build a FastAPI service.
-- **FR-2.2** Ingest marketing data supplied as JSON.
-- **FR-2.3** Validate incoming data against a schema.
-- **FR-2.4** Store validated data to a SQL database.
-- **FR-2.5** Expose a query endpoint that supports pagination.
-- **FR-2.6** The query endpoint supports filtering.
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-2.1** Build a FastAPI service. — *spelled out in [Part 2 §1 Overview](frontend/docs/part-2-backend.md#1-overview)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-2.2** Ingest marketing data supplied as JSON. — *spelled out in [Part 2 §2 API Surface](frontend/docs/part-2-backend.md#2-api-surface)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-2.3** Validate incoming data against a schema. — *spelled out in [Part 2 §3 Schema Validation](frontend/docs/part-2-backend.md#3-schema-validation)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-2.4** Store validated data to a SQL database. — *spelled out in [Part 2 §4 Persistence Layer](frontend/docs/part-2-backend.md#4-persistence-layer)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-2.5** Expose a query endpoint that supports pagination. — *spelled out in [Part 2 §5 Query Endpoint Design](frontend/docs/part-2-backend.md#5-the-query-endpoint-design)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-2.6** The query endpoint supports filtering. — *spelled out in [Part 2 §5 Query Endpoint Design](frontend/docs/part-2-backend.md#5-the-query-endpoint-design)*
 
 #### Section 3 — Data Engineering
 
-- **FR-3.1** Design a cloud-based pipeline that ingests daily Google Ads and Meta campaign data for active campaigns.
-- **FR-3.2** Include orchestration for the pipeline.
-- **FR-3.3** Include storage for the ingested data.
-- **FR-3.4** Include exception handling.
-- **FR-3.5** Include testing.
-- **FR-3.6** Document how to connect to the Google Ads API and the Meta API.
-- **FR-3.7** Provide example API queries that return reports matching the Google Ads and Meta Ads schemas below.
-- **FR-3.8** Write SQL that builds daily client-level CPA tables.
-- **FR-3.9** Write SQL that builds daily client-level ROAS tables.
-- **FR-3.10** Write SQL that detects anomalies in the CPA / ROAS data.
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-3.1** Design a cloud-based pipeline that ingests daily Google Ads and Meta campaign data for active campaigns. — *spelled out in [Part 3 §2 Pipeline Architecture](frontend/docs/part-3-data-engineering.md#2-pipeline-architecture--orchestration)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-3.2** Include orchestration for the pipeline. — *spelled out in [Part 3 §2 Pipeline Architecture](frontend/docs/part-3-data-engineering.md#2-pipeline-architecture--orchestration)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-3.3** Include storage for the ingested data. — *spelled out in [Part 3 §3 Storage & Data Modeling](frontend/docs/part-3-data-engineering.md#3-storage--data-modeling)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-3.4** Include exception handling. — *spelled out in [Part 3 §6 Exception Handling](frontend/docs/part-3-data-engineering.md#6-exception-handling--retries)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-3.5** Include testing. — *spelled out in [Part 3 §7 Testing Strategy](frontend/docs/part-3-data-engineering.md#7-testing-strategy)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-3.6** Document how to connect to the Google Ads API and the Meta API. — *spelled out in [Part 3 §4 Google Ads](frontend/docs/part-3-data-engineering.md#4-google-ads-api-connection) and [§5 Meta](frontend/docs/part-3-data-engineering.md#5-meta-api-connection)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-3.7** Provide example API queries that return reports matching the Google Ads and Meta Ads schemas below. — *spelled out in [Part 3 §4 Google Ads](frontend/docs/part-3-data-engineering.md#4-google-ads-api-connection) and [§5 Meta](frontend/docs/part-3-data-engineering.md#5-meta-api-connection)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-3.8** Write SQL that builds daily client-level CPA tables. — *spelled out in [Part 3 §9 CPA & ROAS SQL](frontend/docs/part-3-data-engineering.md#9-cpa--roas-sql)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-3.9** Write SQL that builds daily client-level ROAS tables. — *spelled out in [Part 3 §9 CPA & ROAS SQL](frontend/docs/part-3-data-engineering.md#9-cpa--roas-sql)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-3.10** Write SQL that detects anomalies in the CPA / ROAS data. — *spelled out in [Part 3 §10 Anomaly Detection SQL](frontend/docs/part-3-data-engineering.md#10-anomaly-detection-sql)*
 
 #### Section 4 — React / Next.js
 
-- **FR-4.1** Build a dashboard page.
-- **FR-4.2** Include a client selector.
-- **FR-4.3** Include KPI cards.
-- **FR-4.4** Include a paginated table.
-- **FR-4.5** Integrate an external API (e.g. US Census or FRED).
-- **FR-4.6** Include error boundaries.
-- **FR-4.7** Include loading states.
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-4.1** Build a dashboard page. — *spelled out in [Part 4 §1 Overview](frontend/docs/part-4-frontend.md#1-overview)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-4.2** Include a client selector. — *spelled out in [Part 4 §2 Auth & Tenant Flow](frontend/docs/part-4-frontend.md#2-auth--tenant-flow)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-4.3** Include KPI cards. — *spelled out in [Part 4 §4 Component Architecture](frontend/docs/part-4-frontend.md#4-component-architecture)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-4.4** Include a paginated table. — *spelled out in [Part 4 §3 Data Fetching Architecture](frontend/docs/part-4-frontend.md#3-data-fetching-architecture)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-4.5** Integrate an external API (e.g. US Census or FRED). — *spelled out in [Part 4 §11 External API: FRED](frontend/docs/part-4-frontend.md#11-external-api-fred)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-4.6** Include error boundaries. — *spelled out in [Part 4 §8 Error & Loading States](frontend/docs/part-4-frontend.md#8-error--loading-states)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-4.7** Include loading states. — *spelled out in [Part 4 §8 Error & Loading States](frontend/docs/part-4-frontend.md#8-error--loading-states)*
 
 #### Section 5 — LLM / AI Integration
 
-- **FR-5.1** Design and justify an LLM-powered feature (e.g. anomaly explanations or a call-scoring QA layer).
-- **FR-5.2** Define monitoring for the feature.
-- **FR-5.3** Define guardrails for the feature.
-- **FR-5.4** Define evaluation metrics for the feature.
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-5.1** Design and justify an LLM-powered feature (e.g. anomaly explanations or a call-scoring QA layer). — *spelled out in [Part 5 §2 The Feature & Its Justification](frontend/docs/part-5-llm-integration.md#2-the-feature--its-justification)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-5.2** Define monitoring for the feature. — *spelled out in [Part 5 §5 Monitoring](frontend/docs/part-5-llm-integration.md#5-monitoring)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-5.3** Define guardrails for the feature. — *spelled out in [Part 5 §4 Guardrails](frontend/docs/part-5-llm-integration.md#4-guardrails)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **FR-5.4** Define evaluation metrics for the feature. — *spelled out in [Part 5 §6 Evaluation Metrics](frontend/docs/part-5-llm-integration.md#6-evaluation-metrics)*
 
 ### Non-Functional Requirements
 
-- **NFR-1 — Multi-tenancy.** The system must isolate data and access per tenant so each user only sees their own website's data. (Section 1)
-- **NFR-2 — Cloud strategy.** The pipeline must be Azure-first but portable across clouds (multi-cloud capable). (Sections 1, 3)
-- **NFR-3 — Scalability.** The data pipeline must handle roughly 10,000 active Google Ads campaigns and roughly 20,000 active Meta DMA-campaigns per day. (Section 3)
-- **NFR-4 — Reliability / SLAs.** The pipeline must meet defined Service Level Agreements. (Section 3)
-- **NFR-5 — Versioning.** The architecture must support versioning of infrastructure and deployments. (Section 1)
-- **NFR-6 — Rollback.** The architecture must support a rollback strategy. (Section 1)
-- **NFR-7 — Monitoring / observability.** Both the platform (Section 1) and the LLM feature (Section 5) must be monitored.
-- **NFR-8 — Reproducible infrastructure.** Infrastructure must be defined as code so it is versioned and repeatable. (Section 1)
-- **NFR-9 — Data quality.** Ingested data must be schema-validated before storage. (Section 2)
-- **NFR-10 — Query performance.** Query results must be paginated and filterable so responses stay bounded as data grows. (Section 2)
-- **NFR-11 — Resilience.** The system must handle failures gracefully: backend exception handling (Section 3) and front-end error boundaries with loading states (Section 4).
-- **NFR-12 — Testability.** The pipeline must be covered by tests. (Section 3)
-- **NFR-13 — AI safety.** The LLM feature must have guardrails and measurable evaluation metrics. (Section 5)
-- **NFR-14 — Deliverability.** All code, diagrams, and written responses must be submitted in a single GitHub repo or zipped folder within 5 days. (Instructions)
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-1 — Multi-tenancy.** The system must isolate data and access per tenant so each user only sees their own website's data. (Section 1) — *spelled out in [Part 1 §2 Multi-Tenancy](frontend/docs/part-1-architecture.md#2-multi-tenancy--tenant-isolation)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-2 — Cloud strategy.** The pipeline must be Azure-first but portable across clouds (multi-cloud capable). (Sections 1, 3) — *spelled out in [Part 1 §5 Azure-First, Multi-Cloud Strategy](frontend/docs/part-1-architecture.md#5-azure-first-multi-cloud-strategy)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-3 — Scalability.** The data pipeline must handle roughly 10,000 active Google Ads campaigns and roughly 20,000 active Meta DMA-campaigns per day. (Section 3) — *spelled out in [Part 3 §2 Pipeline Architecture](frontend/docs/part-3-data-engineering.md#2-pipeline-architecture--orchestration)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-4 — Reliability / SLAs.** The pipeline must meet defined Service Level Agreements. (Section 3) — *spelled out in [Part 3 §8 SLAs](frontend/docs/part-3-data-engineering.md#8-slas)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-5 — Versioning.** The architecture must support versioning of infrastructure and deployments. (Section 1) — *spelled out in [Part 1 §7 Versioning & Rollback](frontend/docs/part-1-architecture.md#7-versioning--rollback)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-6 — Rollback.** The architecture must support a rollback strategy. (Section 1) — *spelled out in [Part 1 §7 Versioning & Rollback](frontend/docs/part-1-architecture.md#7-versioning--rollback)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-7 — Monitoring / observability.** Both the platform (Section 1) and the LLM feature (Section 5) must be monitored. — *spelled out in [Part 1 §8 Monitoring](frontend/docs/part-1-architecture.md#8-monitoring--observability) and [Part 5 §5 Monitoring](frontend/docs/part-5-llm-integration.md#5-monitoring)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-8 — Reproducible infrastructure.** Infrastructure must be defined as code so it is versioned and repeatable. (Section 1) — *spelled out in [Part 1 §6 Infrastructure as Code](frontend/docs/part-1-architecture.md#6-infrastructure-as-code)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-9 — Data quality.** Ingested data must be schema-validated before storage. (Section 2) — *spelled out in [Part 2 §3 Schema Validation](frontend/docs/part-2-backend.md#3-schema-validation)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-10 — Query performance.** Query results must be paginated and filterable so responses stay bounded as data grows. (Section 2) — *spelled out in [Part 2 §5 Query Endpoint Design](frontend/docs/part-2-backend.md#5-the-query-endpoint-design)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-11 — Resilience.** The system must handle failures gracefully: backend exception handling (Section 3) and front-end error boundaries with loading states (Section 4). — *spelled out in [Part 3 §6 Exception Handling](frontend/docs/part-3-data-engineering.md#6-exception-handling--retries) and [Part 4 §8 Error & Loading States](frontend/docs/part-4-frontend.md#8-error--loading-states)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-12 — Testability.** The pipeline must be covered by tests. (Section 3) — *spelled out in [Part 3 §7 Testing Strategy](frontend/docs/part-3-data-engineering.md#7-testing-strategy)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-13 — AI safety.** The LLM feature must have guardrails and measurable evaluation metrics. (Section 5) — *spelled out in [Part 5 §4 Guardrails](frontend/docs/part-5-llm-integration.md#4-guardrails) and [§6 Evaluation Metrics](frontend/docs/part-5-llm-integration.md#6-evaluation-metrics)*
+- <span style="display:inline-block;padding:1px 9px;border:1px solid #a6e3a1;border-radius:9999px;color:#a6e3a1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.06em;text-transform:uppercase">Done</span> **NFR-14 — Deliverability.** All code, diagrams, and written responses must be submitted in a single GitHub repo or zipped folder within 5 days. (Instructions) — *met by this repo*
 
 ## Data Schemas
 
@@ -162,28 +165,35 @@ CAP says under a network partition you choose between consistency and availabili
 
 ## Documentation
 
+The design docs live inside the frontend project so the running dashboard
+can render them at `/system-design`. The links below are the same files,
+viewable on GitHub.
+
 | Section | Document | Status |
 |---------|----------|--------|
-| Part 1 — Architecture & Systems Design | [`docs/part-1-architecture.md`](docs/part-1-architecture.md) | Documented |
-| Part 2 — Backend (FastAPI) | [`docs/part-2-backend.md`](docs/part-2-backend.md) | Documented (code pending) |
-| Part 3 — Data Engineering | [`docs/part-3-data-engineering.md`](docs/part-3-data-engineering.md) | Documented |
-| Part 5 — LLM / AI Integration | [`docs/part-5-llm-integration.md`](docs/part-5-llm-integration.md) | Documented |
-| Data Generator (supporting) | [`docs/data-generator.md`](docs/data-generator.md) | Drafted |
+| Part 1 — Architecture & Systems Design | [`frontend/docs/part-1-architecture.md`](frontend/docs/part-1-architecture.md) | Documented |
+| Part 2 — Backend (FastAPI) | [`frontend/docs/part-2-backend.md`](frontend/docs/part-2-backend.md) | Documented |
+| Part 3 — Data Engineering | [`frontend/docs/part-3-data-engineering.md`](frontend/docs/part-3-data-engineering.md) | Documented |
+| Part 4 — Frontend (Next.js) | [`frontend/docs/part-4-frontend.md`](frontend/docs/part-4-frontend.md) | Documented |
+| Part 5 — LLM / AI Integration | [`frontend/docs/part-5-llm-integration.md`](frontend/docs/part-5-llm-integration.md) | Documented |
+| Data Generator (supporting) | [`frontend/docs/data-generator.md`](frontend/docs/data-generator.md) | Documented |
 
 ## Repository Structure
 
 ```
 FortheaAssesment/
-├── docs/                 # Design documents (Sections 1-3, 5) and supporting docs
-│   ├── part-1-architecture.md
-│   ├── part-2-backend.md
-│   ├── part-3-data-engineering.md
-│   ├── part-5-llm-integration.md
-│   └── data-generator.md
-├── backend/              # Section 2 — FastAPI service
-├── frontend/             # Section 4 — Next.js dashboard
-├── docker-compose.yml    # Local dev stack (backend + frontend + db)
+├── backend/                  # Section 2 — FastAPI service
+├── frontend/                 # Section 4 — Next.js dashboard
+│   └── docs/                 # Design documents, rendered in-app at /system-design
+│       ├── README.md
+│       ├── part-1-architecture.md
+│       ├── part-2-backend.md
+│       ├── part-3-data-engineering.md
+│       ├── part-4-frontend.md
+│       ├── part-5-llm-integration.md
+│       └── data-generator.md
+├── docker-compose.yml        # Local dev stack (backend + frontend + db)
 └── README.md
 ```
 
-_Section folders are scaffolded; code is added in its respective phase. IaC is documented only — see [`docs/part-1-architecture.md`](docs/part-1-architecture.md) §6._
+_Section folders are scaffolded; code is added in its respective phase. IaC is documented only — see [`frontend/docs/part-1-architecture.md`](frontend/docs/part-1-architecture.md) §6._

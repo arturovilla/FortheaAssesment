@@ -1,4 +1,4 @@
-# Part 3 — Data Engineering
+# Part 3: Data Engineering
 
 ## 1. Overview & Problem Framing
 
@@ -41,6 +41,7 @@ Each daily run, per platform:
 6. **Publish.** Validated marts become the serving source for the dashboard and API.
 
 ```mermaid
+%%{init: {'flowchart': {'subGraphTitleMargin': {'top': 20, 'bottom': 12}}, 'themeCSS': '.cluster-label .nodeLabel, .cluster-label foreignObject div { font-size: 18px !important; font-weight: 600 !important; }'}}%%
 flowchart TB
     sched(["Daily schedule<br/>(after source data finalizes)"])
 
@@ -69,11 +70,11 @@ flowchart TB
     dq -->|pass| serve
     dq -->|fail| alert
 
-    classDef comp fill:#ffffff,stroke:#5b6470,stroke-width:1.5px,color:#1a1f29,font-size:18px
+    classDef comp fill:#1e1e2e,stroke:#585b70,stroke-width:1.5px,color:#cdd6f4,font-size:18px
     class sched,gads,meta,blob,raw,stg,marts,dq,serve,alert comp
-    linkStyle default stroke:#7c8694,stroke-width:2px
-    style dag fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
-    style extract fill:#e1e4e9,stroke:#9aa4b2,color:#1a1f29
+    linkStyle default stroke:#7f849c,stroke-width:2px
+    style dag fill:#181825,stroke:#45475a,color:#a6adc8
+    style extract fill:#313244,stroke:#45475a,color:#a6adc8
 ```
 
 ### 2.3 DAG design and scheduling

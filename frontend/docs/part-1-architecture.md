@@ -1,24 +1,167 @@
-# Part 1 — Architecture & Systems Design
+# Part 1: Architecture & Systems Design
 
 ## 1. High-Level Architecture
 
 ### 1.1 System architecture
 
-Deployment view: components, services, and cloud boundaries. Solid edges = data flow. Dashed edges = control plane (auth, secrets, telemetry).
+Deployment view: components, services, and cloud boundaries. The full topology has a lot going on, so we walk through it in three focused layers (serving, ingestion, control plane), then show the integrated picture at the end. Solid edges = data flow. Dashed edges = control plane (auth, secrets, telemetry).
+
+#### Serving path
+
+How a dashboard request flows. Users hit Azure Front Door at the edge, which terminates TLS and forwards to the Container Apps ingress. The Frontend calls the Backend. The Backend reads analytics from Snowflake's marts, reads/writes app state to the operational Postgres, and proxies the FRED API for enrichment.
 
 ```mermaid
 flowchart TB
-    users(["Agency Staff"])
+    users(["Users<br/>(Agency Staff &<br/>External Clients)"])
+
+    subgraph azure["Microsoft Azure"]
+        direction TB
+        afd["Azure Front Door<br/>+ WAF<br/>(TLS · rate limit · DDoS)"]
+        subgraph aca["Azure Container Apps"]
+            direction TB
+            fe["Frontend<br/>Next.js dashboard"]
+            be["Backend<br/>FastAPI"]
+        end
+        opdb[("Operational Store<br/>Azure DB for PostgreSQL")]
+    end
+
+    subgraph snow["Snowflake"]
+        marts["MARTS"]
+    end
+
+    fred["FRED API"]
+
+    users --> afd --> fe --> be
+    be -->|analytics queries| marts
+    be <-->|app state| opdb
+    be -->|enrichment| fred
+
+    classDef comp fill:#1e1e2e,stroke:#585b70,stroke-width:1.5px,color:#cdd6f4,font-size:24px
+    class users,afd,fe,be,opdb,marts,fred comp
+    linkStyle default stroke:#7f849c,stroke-width:2px
+    style azure fill:#181825,stroke:#45475a,color:#a6adc8
+    style aca fill:#313244,stroke:#45475a,color:#a6adc8
+    style snow fill:#181825,stroke:#45475a,color:#a6adc8
+```
+
+#### Ingestion
+
+Two paths land data in the warehouse, both converging at Blob Storage. **Path 1 (scheduled batch):** the Orchestrator pulls from Google Ads, Meta, and GA4's BigQuery export, lands Parquet to Blob, then loads to Snowflake RAW. **Path 2 (ad-hoc JSON upload):** users PUT bytes directly to Blob via a presigned URL (§3.4); the backend coordinates the URL handoff but never carries the bytes. From RAW everything flows through STAGING to MARTS.
+
+```mermaid
+flowchart TB
+    users(["Users<br/>(ad-hoc JSON)"])
 
     subgraph srcs["Marketing Data Sources"]
-        direction LR
+        direction TB
         ga4["Google Analytics 4"]
         gads["Google Ads API"]
         meta["Meta Marketing API"]
     end
 
-    subgraph saas["Identity and Enrichment SaaS"]
-        direction LR
+    subgraph gcp["GCP"]
+        bq["BigQuery<br/>GA4 native export"]
+    end
+
+    subgraph azure["Microsoft Azure"]
+        direction TB
+        orch["Orchestrator<br/>batch pipeline"]
+        blob[("Blob Storage<br/>landing zone")]
+    end
+
+    subgraph snow["Snowflake (on Azure, multi-cloud capable)"]
+        direction TB
+        raw["RAW"] --> stg["STAGING"] --> marts["MARTS"]
+    end
+
+    ga4 --> bq --> orch
+    gads --> orch
+    meta --> orch
+    orch -->|Parquet| blob
+    users -->|presigned URL| blob
+    blob --> raw
+
+    classDef comp fill:#1e1e2e,stroke:#585b70,stroke-width:1.5px,color:#cdd6f4,font-size:24px
+    class users,ga4,gads,meta,bq,orch,blob,raw,stg,marts comp
+    linkStyle default stroke:#7f849c,stroke-width:2px
+    style srcs fill:#181825,stroke:#45475a,color:#a6adc8
+    style gcp fill:#181825,stroke:#45475a,color:#a6adc8
+    style azure fill:#181825,stroke:#45475a,color:#a6adc8
+    style snow fill:#181825,stroke:#45475a,color:#a6adc8
+```
+
+#### Control plane
+
+Auth, secrets, and telemetry — the cross-cutting concerns that every service depends on but no service "uses" as a feature. All shown as dashed edges to distinguish them from data paths.
+
+```mermaid
+flowchart TB
+    subgraph azure["Microsoft Azure"]
+        direction TB
+        fe["Frontend"]
+        be["Backend"]
+        orch["Orchestrator"]
+        kv["Key Vault"]
+        mon["Azure Monitor"]
+    end
+
+    clerk["Auth0 / Clerk<br/>(SaaS identity)"]
+
+    fe -. authenticate .-> clerk
+    be -. validate token .-> clerk
+    be -. secrets .-> kv
+    orch -. secrets .-> kv
+    fe -. telemetry .-> mon
+    be -. telemetry .-> mon
+    orch -. telemetry .-> mon
+
+    classDef comp fill:#1e1e2e,stroke:#585b70,stroke-width:1.5px,color:#cdd6f4,font-size:24px
+    class fe,be,orch,kv,mon,clerk comp
+    linkStyle default stroke:#7f849c,stroke-width:2px
+    style azure fill:#181825,stroke:#45475a,color:#a6adc8
+```
+
+#### Full topology
+
+Everything together in one view. Useful as a reference, but the three layers above are the easier read for grasping how the pieces relate.
+
+```mermaid
+flowchart TB
+    %% Top → bottom story: users hit the UI; UI calls the API; API reads
+    %% from the warehouse and writes to the operational store; ingestion
+    %% feeds the warehouse from the source platforms at the bottom.
+
+    users(["Users<br/>(Agency Staff &<br/>External Clients)"])
+
+    subgraph azure["Microsoft Azure (primary cloud)"]
+        direction TB
+
+        afd["Azure Front Door<br/>+ WAF<br/>(TLS · rate limit · DDoS)"]
+
+        subgraph aca["Azure Container Apps"]
+            direction TB
+            fe["Frontend<br/>Next.js dashboard"]
+            be["Backend<br/>FastAPI"]
+        end
+
+        subgraph azops["Azure platform services"]
+            direction TB
+            opdb[("Operational Store<br/>Azure DB for PostgreSQL")]
+            blob[("Blob Storage<br/>landing zone")]
+            kv["Key Vault"]
+            mon["Azure Monitor"]
+        end
+
+        orch["Orchestrator<br/>batch pipeline"]
+    end
+
+    subgraph snow["Snowflake (on Azure, multi-cloud capable)"]
+        direction TB
+        raw["RAW"] --> stg["STAGING"] --> marts["MARTS"]
+    end
+
+    subgraph saas["Identity & Enrichment SaaS"]
+        direction TB
         auth["Auth0 / Clerk"]
         fred["FRED / US Census API"]
     end
@@ -27,38 +170,32 @@ flowchart TB
         bq["BigQuery<br/>GA4 native export"]
     end
 
-    subgraph azure["Microsoft Azure (primary cloud)"]
-        subgraph aca["Azure Container Apps"]
-            direction LR
-            fe["Frontend<br/>Next.js dashboard"]
-            be["Backend<br/>FastAPI"]
-        end
-        orch["Orchestrator<br/>batch pipeline"]
-        blob[("Blob Storage<br/>landing zone")]
-        opdb[("Operational Store<br/>Azure DB for PostgreSQL")]
-        kv["Key Vault"]
-        mon["Azure Monitor"]
+    subgraph srcs["Marketing Data Sources"]
+        direction TB
+        ga4["Google Analytics 4"]
+        gads["Google Ads API"]
+        meta["Meta Marketing API"]
     end
 
-    subgraph snow["Snowflake (on Azure, multi-cloud capable)"]
-        direction LR
-        raw["RAW"] --> stg["STAGING"] --> marts["MARTS"]
-    end
-
-    %% Serving path
-    users --> fe --> be
+    %% Serving path: public traffic enters via Front Door (§5.2),
+    %% never directly into Container Apps' ingress.
+    users --> afd --> fe --> be
     be -->|analytics queries| marts
     be <-->|app state| opdb
     be -->|enrichment| fred
 
-    %% Ingestion path
+    %% Ingestion path. Two ways data lands in the warehouse:
+    %%   (1) Scheduled batch: orchestrator pulls GA4/Google Ads/Meta → blob → raw
+    %%   (2) Ad-hoc JSON: client PUTs directly to blob via presigned URL (§3.4),
+    %%       worker processes blob → raw. Backend issues + commits the URL but
+    %%       never proxies the bytes.
     ga4 --> bq --> orch
     gads --> orch
     meta --> orch
     orch --> blob --> raw
-    be -->|JSON ingest| raw
+    users -->|JSON ingest<br/>presigned URL| blob
 
-    %% Control plane
+    %% Control plane (dashed)
     fe -. authenticate .-> auth
     be -. validate token .-> auth
     be -. secrets .-> kv
@@ -66,31 +203,39 @@ flowchart TB
     aca -. telemetry .-> mon
     orch -. telemetry .-> mon
 
+    %% Invisible edges force the top-level subgraphs into a single vertical
+    %% column instead of mermaid spreading them side-by-side.
+    azure ~~~ snow
+    snow ~~~ saas
+    saas ~~~ gcp
+    gcp ~~~ srcs
+
     %% Node styling — applied per element, no global theme
-    classDef comp fill:#ffffff,stroke:#5b6470,stroke-width:1.5px,color:#1a1f29,font-size:18px
-    class users,ga4,gads,meta,auth,fred,bq,fe,be,orch,blob,opdb,kv,mon,raw,stg,marts comp
+    classDef comp fill:#1e1e2e,stroke:#585b70,stroke-width:1.5px,color:#cdd6f4,font-size:28px
+    class users,afd,ga4,gads,meta,auth,fred,bq,fe,be,orch,blob,opdb,kv,mon,raw,stg,marts comp
 
     %% Edge styling
-    linkStyle default stroke:#7c8694,stroke-width:2px
+    linkStyle default stroke:#7f849c,stroke-width:2px
 
     %% Subgraph styling
-    style srcs fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
-    style saas fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
-    style gcp fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
-    style azure fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
-    style aca fill:#e1e4e9,stroke:#9aa4b2,color:#1a1f29
-    style snow fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
+    style srcs fill:#181825,stroke:#45475a,color:#a6adc8
+    style saas fill:#181825,stroke:#45475a,color:#a6adc8
+    style gcp fill:#181825,stroke:#45475a,color:#a6adc8
+    style azure fill:#181825,stroke:#45475a,color:#a6adc8
+    style aca fill:#313244,stroke:#45475a,color:#a6adc8
+    style azops fill:#313244,stroke:#45475a,color:#a6adc8
+    style snow fill:#181825,stroke:#45475a,color:#a6adc8
 ```
 
 **Component inventory:**
 
-- **Frontend** — Next.js dashboard on Azure Container Apps (§5.2).
-- **Backend** — FastAPI on Azure Container Apps. Serves analytics from Snowflake marts, reads/writes app state to the operational store.
-- **Orchestrator** — daily batch pipeline; tooling in Section 3.
-- **Operational store** — Azure DB for PostgreSQL; transactional app state (§3.6, §4.5).
-- **Analytical warehouse** — Snowflake, `RAW` → `STAGING` → `MARTS` (§4).
-- **Supporting Azure services** — Blob Storage (landing zone), Key Vault (secrets), Azure Monitor (observability).
-- **External** — GA4 (BigQuery export), Google Ads + Meta APIs, Auth0/Clerk for identity, FRED / US Census for Section 4 enrichment.
+- **Frontend.** Next.js dashboard on Azure Container Apps (§5.2).
+- **Backend.** FastAPI on Azure Container Apps. Serves analytics from Snowflake marts, reads/writes app state to the operational store.
+- **Orchestrator.** Daily batch pipeline; tooling in Section 3.
+- **Operational store.** Azure DB for PostgreSQL; transactional app state (§3.6, §4.5).
+- **Analytical warehouse.** Snowflake, `RAW` → `STAGING` → `MARTS` (§4).
+- **Supporting Azure services.** Blob Storage (landing zone), Key Vault (secrets), Azure Monitor (observability).
+- **External.** GA4 (BigQuery export), Google Ads + Meta APIs, Auth0/Clerk for identity, FRED / US Census for Section 4 enrichment.
 
 ### 1.2 Data flow
 
@@ -98,6 +243,10 @@ Both ingestion paths converge on the warehouse.
 
 ```mermaid
 flowchart LR
+    %% Both ingestion paths converge at Blob Storage (the shared landing
+    %% zone, §3.4), then load into Snowflake RAW → STAGING → MARTS, which
+    %% the dashboard reads. Solid = data path; dashed = control plane.
+
     subgraph sources["Data Sources"]
         ga4["GA4"]
         gads["Google Ads API"]
@@ -109,17 +258,20 @@ flowchart LR
 
     subgraph path1["Path 1: Orchestrated Batch Pipeline"]
         orch["Orchestrator<br/>daily extract"]
-        blob["Blob Storage<br/>Parquet landing"]
     end
-    subgraph path2["Path 2: API Ingest"]
-        api["FastAPI<br/>schema validation"]
+    subgraph path2["Path 2: Async JSON Upload"]
+        api["FastAPI<br/>initiate + commit + poll<br/>(coordinator only —<br/>never proxies bytes)"]
     end
 
     bq --> orch
     gads --> orch
     meta --> orch
-    json --> api
-    orch --> blob
+
+    %% Blob is the shared landing zone for BOTH paths.
+    blob["Blob Storage<br/>landing zone"]
+    orch -->|Parquet| blob
+    json -->|PUT via<br/>presigned URL| blob
+    api -.->|coordinate<br/>upload lifecycle| blob
 
     subgraph snow["Snowflake (Unified Warehouse)"]
         raw["RAW<br/>append-only,<br/>tenant-tagged"]
@@ -128,22 +280,21 @@ flowchart LR
         raw --> stg --> marts
     end
 
-    blob -->|COPY / Snowpipe| raw
-    api -->|validated load| raw
+    blob -->|COPY for batch,<br/>worker load for upload| raw
     marts -->|serving queries| dash["Dashboard<br/>KPI cards, table"]
 
     %% Node styling — applied per element, no global theme
-    classDef comp fill:#ffffff,stroke:#5b6470,stroke-width:1.5px,color:#1a1f29,font-size:18px
+    classDef comp fill:#1e1e2e,stroke:#585b70,stroke-width:1.5px,color:#cdd6f4,font-size:28px
     class ga4,gads,meta,json,bq,orch,blob,api,raw,stg,marts,dash comp
 
     %% Edge styling
-    linkStyle default stroke:#7c8694,stroke-width:2px
+    linkStyle default stroke:#7f849c,stroke-width:2px
 
     %% Subgraph styling
-    style sources fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
-    style path1 fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
-    style path2 fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
-    style snow fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
+    style sources fill:#181825,stroke:#45475a,color:#a6adc8
+    style path1 fill:#181825,stroke:#45475a,color:#a6adc8
+    style path2 fill:#181825,stroke:#45475a,color:#a6adc8
+    style snow fill:#181825,stroke:#45475a,color:#a6adc8
 ```
 
 **Daily ingestion run:**

@@ -1,4 +1,4 @@
-# Part 5 — LLM / AI Integration
+# Part 5: LLM / AI Integration
 
 ## 1. Overview
 
@@ -140,12 +140,12 @@ flowchart TB
     narr --> chart
     check -->|results| chart
 
-    classDef comp fill:#ffffff,stroke:#5b6470,stroke-width:1.5px,color:#1a1f29,font-size:18px
+    classDef comp fill:#1e1e2e,stroke:#585b70,stroke-width:1.5px,color:#cdd6f4,font-size:28px
     class user,ctx,compiler,check,plan,narr,marts,anom,chart comp
-    linkStyle default stroke:#7c8694,stroke-width:2px
-    style backend fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
-    style llm fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
-    style wh fill:#eef0f3,stroke:#9aa4b2,color:#1a1f29
+    linkStyle default stroke:#7f849c,stroke-width:2px
+    style backend fill:#181825,stroke:#45475a,color:#a6adc8
+    style llm fill:#181825,stroke:#45475a,color:#a6adc8
+    style wh fill:#181825,stroke:#45475a,color:#a6adc8
 ```
 
 Step by step:

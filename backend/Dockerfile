@@ -35,6 +35,7 @@ COPY alembic.ini      ./alembic.ini
 COPY alembic/         ./alembic/
 COPY app/             ./app/
 COPY scripts/         ./scripts/
+COPY tests/           ./tests/
 COPY data-generator/  ./data-generator/
 
 # Entrypoint runs alembic migrations before handing off to the CMD. This

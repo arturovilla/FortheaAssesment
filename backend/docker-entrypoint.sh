@@ -13,6 +13,12 @@
 
 set -e
 
+echo "==> Running tests"
+# `set -e` already aborts on non-zero exit, so a failing test stops the
+# container before uvicorn ever binds. That's intentional: a backend that
+# doesn't pass its own contract tests should not accept traffic.
+pytest tests/ -q
+
 echo "==> Applying database migrations"
 alembic upgrade head
 

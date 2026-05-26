@@ -37,6 +37,12 @@ COPY app/             ./app/
 COPY scripts/         ./scripts/
 COPY data-generator/  ./data-generator/
 
+# Entrypoint runs alembic migrations before handing off to the CMD. This
+# way `docker compose up` produces a backend that ALWAYS has the latest
+# schema — no separate `alembic upgrade head` step for the user to remember.
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Run as a non-root user — minor but standard production hygiene.
 RUN useradd -m -u 1000 app && chown -R app:app /app
 USER app
@@ -48,4 +54,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -fsS http://localhost:8000/health || exit 1
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

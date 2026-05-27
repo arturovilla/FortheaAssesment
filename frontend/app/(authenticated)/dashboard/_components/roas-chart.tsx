@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react";
 
 import type { AnomalyRow, PerformanceRow } from "@/lib/api";
+import { TuiPanel } from "@/app/(authenticated)/_components/tui/panel";
 import { formatMultiplier } from "@/lib/format";
 import { useAnomalies, usePerformance } from "@/lib/queries";
 import { useRange } from "@/lib/use-range";
@@ -59,19 +60,15 @@ export function RoasChart() {
 
   return (
     <>
-      <section className="rounded-xl border border-ctp-surface0/60 bg-ctp-base/60 p-5">
-        <header className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-ctp-text">ROAS over time</h2>
-            <p className="text-xs text-ctp-subtext0">
-              Last {days} days · collapses (z &lt; -3) overlaid in red
-            </p>
-          </div>
+      <TuiPanel
+        title="ROAS over time"
+        subtitle={`Last ${days} days · collapses (z < -3) overlaid in red`}
+        actions={
           <ExpandButton onClick={() => setIsExpanded(true)} label="Expand ROAS chart" />
-        </header>
-
+        }
+      >
         {hasError ? (
-          <div className="rounded-md border border-ctp-red/30 bg-ctp-red/5 p-4 text-xs text-ctp-red">
+          <div className="border border-dashed border-ctp-red/40 p-4 text-xs text-ctp-red">
             Failed to load ROAS data.
           </div>
         ) : (
@@ -84,7 +81,7 @@ export function RoasChart() {
             emptyMessage="No ROAS data for this period (no spend logged)."
           />
         )}
-      </section>
+      </TuiPanel>
 
       {isExpanded ? (
         <ExpandedPanel

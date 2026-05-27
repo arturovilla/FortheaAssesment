@@ -1,8 +1,8 @@
 // Shared layout for both authenticated views: /dashboard and /system-design.
 //
-// Topbar layout:
-//   left  : TenantSelector
-//   right : ViewToggle (Dashboard | System design) + Clerk UserButton
+// Topbar layout (TUI restyle):
+//   left  : FORTHEA TUI v0.1.0 brand · TenantSelector
+//   right : ViewToggle (bracket tabs) · ● READY status · Clerk UserButton
 //
 // The layout is intentionally neutral — no h1, no page-specific copy. Each
 // child route owns its own content header. Both routes inherit Clerk
@@ -31,16 +31,27 @@ export default function AuthenticatedLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-ctp-crust text-ctp-text">
-      <header className="sticky top-0 z-10 border-b border-ctp-surface0/60 bg-ctp-crust/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-6 py-3.5 sm:px-8">
-          <TenantSelector />
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-10 border-b border-dashed border-ctp-overlay0/40 bg-ctp-crust/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3 sm:px-8">
+          <div className="flex items-center gap-5">
+            <span className="hidden text-xs font-semibold uppercase tracking-[0.2em] text-ctp-teal md:inline">
+              FORTHEA TUI v0.1.0
+            </span>
+            <span aria-hidden className="hidden h-4 w-px bg-ctp-overlay0/40 md:inline-block" />
+            <TenantSelector />
+          </div>
+          <div className="flex items-center gap-5">
             <ViewToggle />
+            <span aria-hidden className="hidden h-4 w-px bg-ctp-overlay0/40 lg:inline-block" />
+            <span className="hidden items-center gap-1.5 text-xs uppercase tracking-[0.18em] text-ctp-green lg:inline-flex">
+              <span className="text-ctp-green">●</span>
+              READY
+            </span>
             <UserButton
               appearance={{
                 elements: {
                   avatarBox:
-                    "h-9 w-9 ring-1 ring-ctp-surface0/60 hover:ring-ctp-overlay0/60 transition",
+                    "h-8 w-8 ring-1 ring-ctp-overlay0/40 hover:ring-ctp-mauve/60 transition",
                 },
               }}
             />

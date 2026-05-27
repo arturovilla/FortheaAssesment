@@ -5,53 +5,141 @@
    it overrides Tailwind's defaults. */
 @import "highlight.js/styles/atom-one-dark.css";
 
-/* =============================================================================
-   Catppuccin Mocha palette (https://catppuccin.com/palette/).
-   Tailwind v4's `@theme` block turns each `--color-ctp-*` token into a utility
-   class — e.g. `--color-ctp-base` becomes `bg-ctp-base`, `text-ctp-base`,
-   `border-ctp-base`, etc.
+/* NOTE on WebTUI: the @webtui/css + @webtui/theme-catppuccin packages are
+   installed but NOT imported. The full WebTUI bundle injects component
+   styles (button, badge, input, ...) that match `button { ... }` globally
+   and force a 3lh height + gradient-pill background on every <button> in
+   the app. Our TUI primitives are built with plain Tailwind on top of the
+   existing --color-ctp-* tokens, which already cover the Catppuccin palette,
+   so the WebTUI imports are redundant. Re-add them later if we want to
+   adopt WebTUI's attribute-driven components — at that point, only import
+   `@webtui/css/dist/base.css` plus the specific component files we want,
+   never the `full.css` aggregate. */
 
-   Convention used in this app:
+/* =============================================================================
+   Theme tokens.
+
+   Tailwind v4's `@theme` block defines the utility-class layer
+   (--color-ctp-*  →  bg-ctp-*, text-ctp-*, border-ctp-*). The actual hex
+   values are NOT in the @theme block — they're indirected through a
+   --palette-* layer so the active theme can be swapped without touching
+   any component code.
+
+   Two palettes live in this file:
+     - Default: Gruvbox Dark (Pavel Pertsev) — active when no data-theme
+       attribute is set on <html>.
+     - Preserved: Catppuccin Mocha — activate by adding
+       data-theme="catppuccin-mocha" to <html> in app/layout.tsx.
+
+   Token convention (kept identical across themes):
      - crust   : darkest; page background
      - base    : default surface; cards
      - mantle  : between crust and base; navbars, footers
      - surface0/1/2 : raised surfaces (dropdowns, hover states)
      - text         : primary text
      - subtext0/1   : secondary text
-     - overlay0     : muted dividers / placeholders
+     - overlay0/1/2 : muted dividers / placeholders / borders
+     - blue / lavender / mauve / pink / red / peach / yellow /
+       green / teal / sky / sapphire : accent ramp.
 ============================================================================= */
 @theme {
-  --color-ctp-crust:    #11111b;
-  --color-ctp-mantle:   #181825;
-  --color-ctp-base:     #1e1e2e;
-  --color-ctp-surface0: #313244;
-  --color-ctp-surface1: #45475a;
-  --color-ctp-surface2: #585b70;
-  --color-ctp-overlay0: #6c7086;
-  --color-ctp-overlay1: #7f849c;
-  --color-ctp-overlay2: #9399b2;
-  --color-ctp-subtext0: #a6adc8;
-  --color-ctp-subtext1: #bac2de;
-  --color-ctp-text:     #cdd6f4;
+  --color-ctp-crust:    var(--palette-crust);
+  --color-ctp-mantle:   var(--palette-mantle);
+  --color-ctp-base:     var(--palette-base);
+  --color-ctp-surface0: var(--palette-surface0);
+  --color-ctp-surface1: var(--palette-surface1);
+  --color-ctp-surface2: var(--palette-surface2);
+  --color-ctp-overlay0: var(--palette-overlay0);
+  --color-ctp-overlay1: var(--palette-overlay1);
+  --color-ctp-overlay2: var(--palette-overlay2);
+  --color-ctp-subtext0: var(--palette-subtext0);
+  --color-ctp-subtext1: var(--palette-subtext1);
+  --color-ctp-text:     var(--palette-text);
 
-  --color-ctp-blue:      #89b4fa;
-  --color-ctp-lavender:  #b4befe;
-  --color-ctp-mauve:     #cba6f7;
-  --color-ctp-pink:      #f5c2e7;
-  --color-ctp-red:       #f38ba8;
-  --color-ctp-peach:     #fab387;
-  --color-ctp-yellow:    #f9e2af;
-  --color-ctp-green:     #a6e3a1;
-  --color-ctp-teal:      #94e2d5;
-  --color-ctp-sky:       #89dceb;
-  --color-ctp-sapphire:  #74c7ec;
+  --color-ctp-blue:      var(--palette-blue);
+  --color-ctp-lavender:  var(--palette-lavender);
+  --color-ctp-mauve:     var(--palette-mauve);
+  --color-ctp-pink:      var(--palette-pink);
+  --color-ctp-red:       var(--palette-red);
+  --color-ctp-peach:     var(--palette-peach);
+  --color-ctp-yellow:    var(--palette-yellow);
+  --color-ctp-green:     var(--palette-green);
+  --color-ctp-teal:      var(--palette-teal);
+  --color-ctp-sky:       var(--palette-sky);
+  --color-ctp-sapphire:  var(--palette-sapphire);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Both --font-mono and --font-sans are set in app/layout.tsx via
+     next/font/google. font-mono is the TUI primary; font-sans is fallback
+     for third-party widgets that ignore overrides. */
+}
+
+/* -----------------------------------------------------------------------------
+   ACTIVE PALETTE — Gruvbox Dark
+   Mapped against Pavel Pertsev's canonical gruvbox-dark hex codes.
+   Gruvbox doesn't ship a lavender or a pink, so those alias the nearest
+   bright-blue and bright-purple respectively.
+----------------------------------------------------------------------------- */
+:root {
+  --palette-crust:    #1d2021;  /* bg0_h (hardest) */
+  --palette-mantle:   #282828;  /* bg0 */
+  --palette-base:     #32302f;  /* bg0_s (soft) */
+  --palette-surface0: #3c3836;  /* bg1 */
+  --palette-surface1: #504945;  /* bg2 */
+  --palette-surface2: #665c54;  /* bg3 */
+  --palette-overlay0: #7c6f64;  /* bg4 */
+  --palette-overlay1: #928374;  /* gray */
+  --palette-overlay2: #a89984;  /* fg4 */
+  --palette-subtext0: #bdae93;  /* fg3 */
+  --palette-subtext1: #d5c4a1;  /* fg2 */
+  --palette-text:     #ebdbb2;  /* fg1 */
+
+  --palette-blue:     #83a598;  /* bright blue */
+  --palette-lavender: #83a598;  /* gruvbox has no lavender — alias to blue */
+  --palette-mauve:    #d3869b;  /* bright purple */
+  --palette-pink:     #d3869b;  /* gruvbox has no pink — alias to purple */
+  --palette-red:      #fb4934;  /* bright red */
+  --palette-peach:    #fe8019;  /* bright orange */
+  --palette-yellow:   #fabd2f;  /* bright yellow */
+  --palette-green:    #b8bb26;  /* bright green */
+  --palette-teal:     #8ec07c;  /* bright aqua */
+  --palette-sky:      #8ec07c;  /* bright aqua (same family) */
+  --palette-sapphire: #458588;  /* neutral blue (dim) */
+}
+
+/* -----------------------------------------------------------------------------
+   PRESERVED PALETTE — Catppuccin Mocha
+   Activate by setting data-theme="catppuccin-mocha" on <html> in
+   app/layout.tsx. Kept here so we can swap back without losing the values.
+----------------------------------------------------------------------------- */
+:root[data-theme="catppuccin-mocha"] {
+  --palette-crust:    #11111b;
+  --palette-mantle:   #181825;
+  --palette-base:     #1e1e2e;
+  --palette-surface0: #313244;
+  --palette-surface1: #45475a;
+  --palette-surface2: #585b70;
+  --palette-overlay0: #6c7086;
+  --palette-overlay1: #7f849c;
+  --palette-overlay2: #9399b2;
+  --palette-subtext0: #a6adc8;
+  --palette-subtext1: #bac2de;
+  --palette-text:     #cdd6f4;
+
+  --palette-blue:     #89b4fa;
+  --palette-lavender: #b4befe;
+  --palette-mauve:    #cba6f7;
+  --palette-pink:     #f5c2e7;
+  --palette-red:      #f38ba8;
+  --palette-peach:    #fab387;
+  --palette-yellow:   #f9e2af;
+  --palette-green:    #a6e3a1;
+  --palette-teal:     #94e2d5;
+  --palette-sky:      #89dceb;
+  --palette-sapphire: #74c7ec;
 }
 
 body {
   background: var(--color-ctp-crust);
   color: var(--color-ctp-text);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }

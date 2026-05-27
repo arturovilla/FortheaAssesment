@@ -1,18 +1,17 @@
 "use client";
 
-// Active-tenant selector for the dashboard topbar.
+// TenantSelector — TUI list-style picker for the topbar.
 //
-// Tenant resolution (URL → Clerk fallback) lives in lib/use-active-tenant.ts
-// so the API hooks and this component agree on which tenant is "active".
+// Visual model lifted from the reference image's Settings menu:
+//   - Trigger reads `TENANT: [ acme ▾ ]` in the bar, monospace.
+//   - Dropdown is a vertical list, each row prefixed by `>` when it's the
+//     active option (mauve accent), aligned in a monospace column.
 //
-// UI model:
-//   - Single-tenant users see a read-only chip (no dropdown).
-//   - Multi-tenant users (agency-staff / admin) see a dropdown with smooth
-//     fade + scale entrance.
-//   - Writing the selection updates the URL `?tenant=<slug>`, which
-//     useActiveTenant reads back. URL is the source of truth.
+// Tenant resolution (URL is source of truth, Clerk JWT is fallback) is
+// unchanged — see lib/use-active-tenant.ts. Selecting writes ?tenant=<slug>
+// to the URL, which useActiveTenant reads back.
 
-import { Building2, Check, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -30,7 +29,6 @@ export function TenantSelector() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close on click outside or Escape.
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -51,14 +49,20 @@ export function TenantSelector() {
   }, [open]);
 
   if (!isReady) {
-    return <div className="h-9 w-40 animate-pulse rounded-lg border border-ctp-surface0/60 bg-ctp-base/40" />;
+    return (
+      <span className="inline-flex items-center gap-2 text-sm text-ctp-overlay0">
+        <span className="text-ctp-subtext0">TENANT:</span>
+        <span className="animate-pulse">[ loading… ]</span>
+      </span>
+    );
   }
 
   if (tenants.length === 0 || !active) {
     return (
-      <div className="rounded-lg border border-ctp-red/30 bg-ctp-red/10 px-3 py-2 text-xs text-ctp-red">
-        No tenant assignments
-      </div>
+      <span className="inline-flex items-center gap-2 text-sm text-ctp-red">
+        <span className="text-ctp-subtext0">TENANT:</span>
+        [ NONE ]
+      </span>
     );
   }
 
@@ -69,40 +73,46 @@ export function TenantSelector() {
     setOpen(false);
   }
 
-  // Single-tenant user → read-only chip.
+  // Single-tenant user → read-only bracket text.
   if (tenants.length === 1) {
     return (
-      <div className="inline-flex items-center gap-2.5 rounded-lg border border-ctp-surface0/60 bg-ctp-base/60 px-3.5 py-2 text-sm font-medium text-ctp-text">
-        <Building2 className="h-4 w-4 text-ctp-subtext0" />
-        <span>{titleCase(active)}</span>
-      </div>
+      <span className="inline-flex items-center gap-2 text-sm">
+        <span className="text-ctp-subtext0">TENANT:</span>
+        <span className="text-ctp-text">
+          <span className="text-ctp-overlay0">[</span>
+          {" "}
+          {titleCase(active)}
+          {" "}
+          <span className="text-ctp-overlay0">]</span>
+        </span>
+      </span>
     );
   }
 
-  // Multi-tenant user → animated dropdown.
+  // Multi-tenant user → dropdown.
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-2.5 rounded-lg border border-ctp-surface0/60 bg-ctp-base/60 px-3.5 py-2 text-sm font-medium text-ctp-text transition-colors duration-150 hover:bg-ctp-surface0/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ctp-overlay0/40"
+        className="group inline-flex items-center gap-2 text-sm transition-colors duration-100 focus-visible:outline-none focus-visible:underline"
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <Building2 className="h-4 w-4 text-ctp-subtext0" />
-        <span>{titleCase(active)}</span>
+        <span className="text-ctp-subtext0">TENANT:</span>
+        <span className="text-ctp-overlay0 group-hover:text-ctp-subtext0">[</span>
+        <span className="text-ctp-text">{titleCase(active)}</span>
         <ChevronDown
-          className={`h-4 w-4 text-ctp-subtext0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`h-3.5 w-3.5 text-ctp-subtext0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         />
+        <span className="text-ctp-overlay0 group-hover:text-ctp-subtext0">]</span>
       </button>
 
-      {/* Dropdown stays in the DOM so it can transition on both enter and exit.
-          `pointer-events-none` when closed prevents click-through. */}
       <div
-        className={`absolute left-0 top-full z-20 mt-2 min-w-[12rem] origin-top-left rounded-lg border border-ctp-surface0/80 bg-ctp-mantle p-1 shadow-2xl shadow-black/40 backdrop-blur transition-all duration-150 ease-out ${
+        className={`absolute left-0 top-full z-20 mt-2 min-w-[14rem] border border-dashed border-ctp-overlay0/70 bg-ctp-crust py-1 shadow-2xl shadow-black/40 transition-all duration-150 ease-out ${
           open
-            ? "translate-y-0 scale-100 opacity-100"
-            : "pointer-events-none -translate-y-1 scale-95 opacity-0"
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-1 opacity-0"
         }`}
         role="listbox"
       >
@@ -115,13 +125,19 @@ export function TenantSelector() {
               role="option"
               aria-selected={isActive}
               onClick={() => selectTenant(t)}
-              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm text-ctp-text transition-colors duration-100 hover:bg-ctp-surface0/70"
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors duration-75 ${
+                isActive
+                  ? "bg-ctp-mauve/15 text-ctp-mauve"
+                  : "text-ctp-subtext1 hover:bg-ctp-surface0/40 hover:text-ctp-text"
+              }`}
             >
-              <span className="flex items-center gap-2.5">
-                <Building2 className="h-4 w-4 text-ctp-subtext0" />
-                {titleCase(t)}
+              <span
+                aria-hidden
+                className={`w-3 text-ctp-mauve ${isActive ? "opacity-100" : "opacity-0"}`}
+              >
+                {">"}
               </span>
-              {isActive && <Check className="h-4 w-4 text-ctp-green" />}
+              <span>{titleCase(t)}</span>
             </button>
           );
         })}

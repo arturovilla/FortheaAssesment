@@ -10,10 +10,11 @@
 // No click target yet — slice 6 wires these to the performance table once
 // it exists; for now the cards are informational.
 
-import { AlertTriangle, Check } from "lucide-react";
 import { useState } from "react";
 
 import type { AnomalyRow } from "@/lib/api";
+import { TuiPanel } from "@/app/(authenticated)/_components/tui/panel";
+import { TuiStatusPill } from "@/app/(authenticated)/_components/tui/status-pill";
 import { useAnomalies } from "@/lib/queries";
 import { useRange } from "@/lib/use-range";
 
@@ -56,33 +57,24 @@ export function AnomaliesPanel() {
   const visible = all.slice(0, MAX_VISIBLE);
   const overflow = Math.max(0, all.length - visible.length);
 
+  const title = all.length > 0 ? `Anomalies (${all.length})` : "Anomalies";
+
   return (
     <>
-      <section className="rounded-xl border border-ctp-surface0/60 bg-ctp-base/60 p-5">
-        <header className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-ctp-text">
-              Anomalies
-              {all.length > 0 ? (
-                <span className="ml-2 font-normal text-ctp-subtext0">
-                  ({all.length} flagged)
-                </span>
-              ) : null}
-            </h2>
-            <p className="text-xs text-ctp-subtext0">
-              Most recent in the last {days} days
-            </p>
-          </div>
-          {all.length > 0 ? (
+      <TuiPanel
+        title={title}
+        subtitle={`Most recent in the last ${days} days`}
+        actions={
+          all.length > 0 ? (
             <ExpandButton
               onClick={() => setIsExpanded(true)}
               label="Expand anomalies view"
             />
-          ) : null}
-        </header>
-
+          ) : undefined
+        }
+      >
         {anomalies.error ? (
-          <div className="rounded-md border border-ctp-red/30 bg-ctp-red/5 p-4 text-xs text-ctp-red">
+          <div className="border border-dashed border-ctp-red/40 p-4 text-xs text-ctp-red">
             Failed to load anomalies.
           </div>
         ) : anomalies.isLoading ? (
@@ -103,7 +95,7 @@ export function AnomaliesPanel() {
             ) : null}
           </ul>
         )}
-      </section>
+      </TuiPanel>
 
       {isExpanded ? (
         <ExpandedPanel
@@ -138,19 +130,13 @@ function FlagSummary({ rows }: { rows: AnomalyRow[] }) {
     }
   }
   return (
-    <div className="mb-5 flex flex-wrap gap-2">
+    <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
       {FLAG_DISPLAY_ORDER.map((flag) => (
-        <div
-          key={flag}
-          className="rounded-lg border border-ctp-surface0/60 bg-ctp-base/60 px-3 py-2"
-        >
-          <div className="font-mono text-[10px] uppercase tracking-wider text-ctp-subtext0">
-            {FLAG_LABELS[flag] ?? flag}
-          </div>
-          <div className="mt-0.5 text-lg font-semibold tabular-nums text-ctp-text">
+        <TuiPanel key={flag} title={FLAG_LABELS[flag] ?? flag} className="!pt-4 !pb-3">
+          <div className="text-lg font-semibold tabular-nums text-ctp-text">
             {counts[flag]}
           </div>
-        </div>
+        </TuiPanel>
       ))}
     </div>
   );
@@ -166,10 +152,12 @@ function ExpandedAnomalyCard({ row }: { row: AnomalyRow }) {
   const roasZ = row.roas_zscore !== null ? Number(row.roas_zscore) : null;
 
   return (
-    <article className="h-full rounded-lg border border-ctp-surface0/60 bg-ctp-mantle/60 p-4">
+    <article className="h-full border border-dashed border-ctp-overlay0/50 bg-ctp-mantle/40 p-4">
       <header className="flex items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-1.5">
-          <AlertTriangle className="h-3.5 w-3.5 text-ctp-red" />
+          <span aria-hidden className="text-ctp-red">
+            ▲
+          </span>
           <span className="font-medium text-ctp-text">
             {formatShortDate(row.activity_date)}
           </span>
@@ -177,7 +165,7 @@ function ExpandedAnomalyCard({ row }: { row: AnomalyRow }) {
         <span className="text-ctp-subtext0">{row.client_name}</span>
       </header>
 
-      <div className="mt-2.5 flex flex-wrap gap-1">
+      <div className="mt-2.5 flex flex-wrap gap-2">
         {triggered.map((flag) => (
           <FlagPill key={flag} flag={flag} />
         ))}
@@ -221,10 +209,12 @@ function AnomalyItem({ row }: { row: AnomalyRow }) {
   const headline = headlineFor(row, triggered[0]);
 
   return (
-    <article className="rounded-lg border border-ctp-surface0/60 bg-ctp-mantle/60 p-3">
+    <article className="border border-dashed border-ctp-overlay0/40 bg-ctp-mantle/40 p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5 text-xs">
-          <AlertTriangle className="h-3.5 w-3.5 text-ctp-red" />
+          <span aria-hidden className="text-ctp-red">
+            ▲
+          </span>
           <span className="font-medium text-ctp-text">
             {formatShortDate(row.activity_date)}
           </span>
@@ -233,7 +223,7 @@ function AnomalyItem({ row }: { row: AnomalyRow }) {
         </div>
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-1">
+      <div className="mt-2 flex flex-wrap gap-2">
         {triggered.map((flag) => (
           <FlagPill key={flag} flag={flag} />
         ))}
@@ -250,9 +240,7 @@ function AnomalyItem({ row }: { row: AnomalyRow }) {
 
 function FlagPill({ flag }: { flag: string }) {
   return (
-    <span className="rounded-md border border-ctp-red/30 bg-ctp-red/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ctp-red">
-      {FLAG_LABELS[flag] ?? flag}
-    </span>
+    <TuiStatusPill kind="crit">{FLAG_LABELS[flag] ?? flag}</TuiStatusPill>
   );
 }
 
@@ -326,7 +314,7 @@ function LoadingList() {
       {[0, 1, 2].map((i) => (
         <li
           key={i}
-          className="h-20 animate-pulse rounded-lg border border-ctp-surface0/40 bg-ctp-surface0/20"
+          className="h-20 animate-pulse border border-dashed border-ctp-surface0/40 bg-ctp-surface0/20"
         />
       ))}
     </ul>
@@ -335,8 +323,8 @@ function LoadingList() {
 
 function EmptyState({ days }: { days: number }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-dashed border-ctp-green/30 bg-ctp-green/5 p-4 text-xs text-ctp-green">
-      <Check className="h-4 w-4" />
+    <div className="flex items-center gap-2 border border-dashed border-ctp-green/40 p-4 text-xs text-ctp-green">
+      <span aria-hidden>✓</span>
       <span>No anomalies in the last {days} days.</span>
     </div>
   );

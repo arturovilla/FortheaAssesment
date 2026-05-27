@@ -87,7 +87,7 @@ export function KpiStrip() {
         tooltip="Sum of daily ad spend across all clients in the window — Google Ads and Meta combined, from the performance mart."
       />
       <KpiCard
-        label="Conversions"
+        label="Conv"
         value={currentKpis ? formatCount(currentKpis.conversions) : ""}
         delta={
           currentKpis && priorKpis
@@ -143,7 +143,7 @@ export function KpiStrip() {
 
       {/* Macro KPIs */}
       <KpiCard
-        label="Unemployment"
+        label="Unemp"
         value={
           unemployment
             ? formatPercent(unemployment.latest)
@@ -165,7 +165,7 @@ export function KpiStrip() {
         tooltipAlign="end"
       />
       <KpiCard
-        label="Fed Funds"
+        label="Fed"
         value={fedFunds ? formatPercent(fedFunds.latest, 2) : ""}
         delta={
           fedFunds && fedFunds.delta !== null

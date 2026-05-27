@@ -14,10 +14,11 @@
 // to reset state" pattern: a thin wrapper computes a resetKey and the inner
 // component re-mounts whenever the scope changes. No setState-in-effect.
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { AnomalyRow, PerformanceRow } from "@/lib/api";
+import { TuiPanel } from "@/app/(authenticated)/_components/tui/panel";
+import { TuiStatusPill } from "@/app/(authenticated)/_components/tui/status-pill";
 import { useActiveTenant } from "@/lib/use-active-tenant";
 import { useAnomalies, usePerformance } from "@/lib/queries";
 import { useRange } from "@/lib/use-range";
@@ -108,16 +109,10 @@ function PerformanceTableInner({ window: w, days }: { window: DateWindow; days: 
   }
 
   return (
-    <section className="rounded-xl border border-ctp-surface0/60 bg-ctp-base/60 p-5">
-      <header className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-semibold text-ctp-text">Performance</h2>
-          <p className="text-xs text-ctp-subtext0">
-            Daily client-level rows · last {days} days · sorted newest first
-          </p>
-        </div>
-      </header>
-
+    <TuiPanel
+      title="Performance"
+      subtitle={`Daily client-level rows · last ${days} days · sorted newest first`}
+    >
       {performance.error ? (
         <ErrorState />
       ) : performance.isLoading ? (
@@ -129,7 +124,7 @@ function PerformanceTableInner({ window: w, days }: { window: DateWindow; days: 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
-                <tr className="border-b border-ctp-surface0/60 text-left font-mono text-[10px] uppercase tracking-wider text-ctp-subtext0">
+                <tr className="border-b border-dashed border-ctp-teal/40 text-left text-[10px] uppercase tracking-[0.12em] text-ctp-teal">
                   <Th>Date</Th>
                   <Th>Client</Th>
                   <Th align="right">Spend</Th>
@@ -161,7 +156,7 @@ function PerformanceTableInner({ window: w, days }: { window: DateWindow; days: 
           />
         </>
       )}
-    </section>
+    </TuiPanel>
   );
 }
 
@@ -175,8 +170,13 @@ function Row({ row, anomaly }: { row: PerformanceRow; anomaly: AnomalyRow | unde
     : [];
 
   return (
-    <tr className="border-b border-ctp-surface0/30 transition-colors hover:bg-ctp-surface0/30">
-      <Td className="font-mono text-xs text-ctp-subtext1">{row.activity_date}</Td>
+    <tr className="group border-b border-dashed border-ctp-overlay0/15 transition-colors hover:bg-ctp-surface0/20">
+      <Td className="text-xs text-ctp-subtext1">
+        <span aria-hidden className="mr-1 text-ctp-mauve opacity-0 group-hover:opacity-100">
+          {">"}
+        </span>
+        {row.activity_date}
+      </Td>
       <Td>{row.client_name}</Td>
       <Td align="right" className="tabular-nums">{formatMoney(row.total_spend)}</Td>
       <Td align="right" className="tabular-nums">{formatInt(row.total_conversions)}</Td>
@@ -184,14 +184,11 @@ function Row({ row, anomaly }: { row: PerformanceRow; anomaly: AnomalyRow | unde
       <Td align="right" className="tabular-nums">{formatRoasCell(row.roas)}</Td>
       <Td>
         {triggered.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-2">
             {triggered.map((flag) => (
-              <span
-                key={flag}
-                className="rounded-md border border-ctp-red/30 bg-ctp-red/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-ctp-red"
-              >
+              <TuiStatusPill key={flag} kind="crit">
                 {FLAG_LABELS[flag] ?? flag}
-              </span>
+              </TuiStatusPill>
             ))}
           </div>
         ) : (
@@ -226,14 +223,12 @@ function Pagination({
       <span className="tabular-nums">
         Page {pageNumber} · {count} {count === 1 ? "row" : "rows"}
       </span>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-3">
         <PageButton onClick={onPrev} disabled={!hasPrev} aria-label="Previous page">
-          <ChevronLeft className="h-4 w-4" />
-          <span>Prev</span>
+          ◀ Prev
         </PageButton>
         <PageButton onClick={onNext} disabled={!hasNext} aria-label="Next page">
-          <span>Next</span>
-          <ChevronRight className="h-4 w-4" />
+          Next ▶
         </PageButton>
       </div>
     </footer>
@@ -251,10 +246,12 @@ function PageButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-1 rounded-md border border-ctp-surface0/60 bg-ctp-base/80 px-2.5 py-1.5 text-xs font-medium text-ctp-text transition-colors duration-150 hover:bg-ctp-surface0/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ctp-overlay0/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-ctp-base/80"
+      className="group inline-flex items-center px-1 text-xs text-ctp-subtext1 transition-colors hover:text-ctp-text focus-visible:outline-none focus-visible:underline disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-ctp-subtext1"
       {...rest}
     >
-      {children}
+      <span className="text-ctp-overlay0 group-hover:text-ctp-subtext0">[</span>
+      <span className="px-1.5">{children}</span>
+      <span className="text-ctp-overlay0 group-hover:text-ctp-subtext0">]</span>
     </button>
   );
 }
@@ -352,7 +349,7 @@ function LoadingTable() {
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className="h-9 animate-pulse rounded-md border border-ctp-surface0/40 bg-ctp-surface0/20"
+          className="h-9 animate-pulse border border-dashed border-ctp-surface0/40 bg-ctp-surface0/20"
         />
       ))}
     </div>
@@ -361,7 +358,7 @@ function LoadingTable() {
 
 function EmptyState() {
   return (
-    <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-ctp-surface0/60 text-xs text-ctp-subtext0">
+    <div className="flex h-32 items-center justify-center border border-dashed border-ctp-overlay0/40 text-xs text-ctp-subtext0">
       No performance data for this period.
     </div>
   );
@@ -369,7 +366,7 @@ function EmptyState() {
 
 function ErrorState() {
   return (
-    <div className="rounded-md border border-ctp-red/30 bg-ctp-red/5 p-4 text-xs text-ctp-red">
+    <div className="border border-dashed border-ctp-red/40 p-4 text-xs text-ctp-red">
       Failed to load performance data.
     </div>
   );

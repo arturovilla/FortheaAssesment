@@ -84,28 +84,32 @@ export function MarkdownView({ source }: { source: string }) {
       className={[
         // Tailwind typography base + dark-mode defaults
         "prose prose-invert max-w-none",
-        // Catppuccin tuning — keep these tight so we read prose consistently
-        // across all docs.
-        "prose-headings:text-ctp-text",
-        "prose-h1:border-b prose-h1:border-ctp-surface0/60 prose-h1:pb-3",
-        "prose-h2:mt-10 prose-h2:border-b prose-h2:border-ctp-surface0/40 prose-h2:pb-2",
+        // TUI palette — headings sit in the teal accent; H1/H2 underlines are
+        // dashed teal, matching the panel-cap separators used on the
+        // dashboard. Square corners throughout.
+        "prose-headings:text-ctp-teal",
+        "prose-h1:border-b prose-h1:border-dashed prose-h1:border-ctp-teal/40 prose-h1:pb-3 prose-h1:uppercase prose-h1:tracking-[0.06em]",
+        "prose-h2:mt-10 prose-h2:border-b prose-h2:border-dashed prose-h2:border-ctp-teal/30 prose-h2:pb-2",
+        "prose-h3:text-ctp-mauve",
+        "prose-h4:text-ctp-text",
         "prose-p:text-ctp-subtext1",
         "prose-li:text-ctp-subtext1",
         "prose-strong:text-ctp-text",
-        "prose-a:text-ctp-blue prose-a:no-underline hover:prose-a:underline",
-        // Inline code (the prose-code selector excludes fenced blocks since
-        // those are wrapped in <pre>). Style as a subtle pill.
-        "prose-code:rounded prose-code:bg-ctp-surface0/60 prose-code:px-1 prose-code:py-0.5 prose-code:text-ctp-text prose-code:before:content-none prose-code:after:content-none",
-        // Fenced blocks: highlight.js colours the tokens; we frame the block.
-        "prose-pre:rounded-lg prose-pre:border prose-pre:border-ctp-surface0/60 prose-pre:bg-ctp-mantle",
-        // Tables: every doc has them; pad cells and zebra-stripe.
+        "prose-a:text-ctp-mauve prose-a:underline hover:prose-a:text-ctp-lavender",
+        // Inline code: square dashed pill in surface0; no fancy quote marks
+        // injected by Tailwind typography defaults.
+        "prose-code:rounded-none prose-code:border prose-code:border-dashed prose-code:border-ctp-overlay0/40 prose-code:bg-ctp-surface0/40 prose-code:px-1 prose-code:py-0.5 prose-code:text-ctp-text prose-code:before:content-none prose-code:after:content-none",
+        // Fenced blocks: highlight.js colours the tokens; we frame the block
+        // with a dashed teal border, matching the TuiPanel aesthetic.
+        "prose-pre:rounded-none prose-pre:border prose-pre:border-dashed prose-pre:border-ctp-overlay0/50 prose-pre:bg-ctp-mantle",
+        // Tables: every doc has them.
         "prose-table:text-sm",
-        "prose-th:border-ctp-surface0/60 prose-th:text-ctp-text",
+        "prose-th:border-ctp-overlay0/50 prose-th:text-ctp-teal",
         "prose-td:border-ctp-surface0/40 prose-td:text-ctp-subtext1",
-        // Blockquotes (none in the docs today but harmless)
-        "prose-blockquote:border-l-ctp-overlay0/60 prose-blockquote:text-ctp-subtext0",
+        // Blockquotes
+        "prose-blockquote:border-l-ctp-mauve/50 prose-blockquote:text-ctp-subtext0",
         // Horizontal rules
-        "prose-hr:border-ctp-surface0/60",
+        "prose-hr:border-dashed prose-hr:border-ctp-teal/30",
       ].join(" ")}
     >
       <ReactMarkdown

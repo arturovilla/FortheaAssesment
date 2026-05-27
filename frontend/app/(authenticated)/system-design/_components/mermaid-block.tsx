@@ -56,7 +56,7 @@ export function MermaidBlock({ code }: { code: string }) {
 
   if (error) {
     return (
-      <div className="my-4 rounded-md border border-ctp-red/30 bg-ctp-red/5 p-3 text-xs text-ctp-red">
+      <div className="my-4 border border-dashed border-ctp-red/40 p-3 text-xs text-ctp-red">
         Failed to render mermaid diagram: {error}
       </div>
     );
@@ -67,7 +67,7 @@ export function MermaidBlock({ code }: { code: string }) {
       ref={containerRef}
       // overflow-x: scroll catches wide flowcharts; centred so narrow diagrams
       // sit in the middle of the prose column.
-      className="my-6 flex justify-center overflow-x-auto rounded-lg border border-ctp-surface0/40 bg-ctp-base/30 p-4"
+      className="my-6 flex justify-center overflow-x-auto border border-dashed border-ctp-overlay0/40 bg-ctp-base/20 p-4"
     />
   );
 }

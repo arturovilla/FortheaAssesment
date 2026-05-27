@@ -19,7 +19,6 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/nextjs";
-import { CheckCircle2, FileJson, Upload, X, XCircle } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -29,6 +28,8 @@ import {
   type UploadStatusResponse,
   type UploadType,
 } from "@/lib/api";
+import { TuiPanel } from "@/app/(authenticated)/_components/tui/panel";
+import { TuiStatusPill } from "@/app/(authenticated)/_components/tui/status-pill";
 import { useActiveTenant } from "@/lib/use-active-tenant";
 
 // =============================================================================
@@ -73,10 +74,14 @@ export function UploadData() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-lg border border-ctp-surface0/60 bg-ctp-base/60 px-3 py-1.5 text-sm font-medium text-ctp-text transition-colors duration-150 hover:bg-ctp-surface0/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ctp-overlay0/40"
+        className="group inline-flex items-center px-1 text-sm text-ctp-subtext1 transition-colors hover:text-ctp-text focus-visible:outline-none focus-visible:underline"
       >
-        <Upload className="h-4 w-4 text-ctp-subtext0" />
-        Upload data
+        <span className="text-ctp-overlay0 group-hover:text-ctp-subtext0">[</span>
+        <span className="px-1.5" aria-hidden>
+          ↑
+        </span>
+        <span>Upload data</span>
+        <span className="ml-1 text-ctp-overlay0 group-hover:text-ctp-subtext0">]</span>
       </button>
       {open ? <UploadDialog onClose={() => setOpen(false)} /> : null}
     </>
@@ -203,45 +208,48 @@ function UploadDialog({ onClose }: { onClose: () => void }) {
         }}
       />
 
-      {/* Panel */}
-      <div className="relative z-10 w-full max-w-md rounded-xl border border-ctp-surface0/80 bg-ctp-mantle p-5 shadow-2xl shadow-black/60">
-        <header className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-ctp-text">Upload data</h2>
-            <p className="mt-0.5 text-xs text-ctp-subtext0">
-              JSON file matching the schema for the selected type. Server validates each record;
-              tenant_id is bound from your active tenant.
-            </p>
-          </div>
-          {canDismiss(phase) ? (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="rounded-md p-1 text-ctp-subtext0 transition-colors hover:bg-ctp-surface0/60 hover:text-ctp-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ctp-overlay0/40"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          ) : null}
-        </header>
-
-        {phase.kind === "succeeded" ? (
-          <SuccessState final={phase.final} onClose={onClose} />
-        ) : phase.kind === "failed" ? (
-          <FailureState message={phase.message} onRetry={reset} onClose={onClose} />
-        ) : phase.kind === "idle" ? (
-          <IdleForm
-            type={type}
-            onTypeChange={setType}
-            file={file}
-            onFileChange={setFile}
-            fileInputRef={fileInputRef}
-            onSubmit={run}
-            onCancel={onClose}
-          />
-        ) : (
-          <ProgressState phase={phase} />
-        )}
+      {/* Panel — TuiPanel handles the dashed frame + title cap. Close button
+          sits in the actions slot only when the upload is dismissable. */}
+      <div className="relative z-10 w-full max-w-md">
+        <TuiPanel
+          title="Upload data"
+          subtitle="JSON file matching the schema for the selected type. Server validates each record; tenant_id is bound from your active tenant."
+          tone="active"
+          actions={
+            canDismiss(phase) ? (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="group inline-flex items-center text-xs text-ctp-subtext1 transition-colors hover:text-ctp-red focus-visible:outline-none focus-visible:underline"
+              >
+                <span className="text-ctp-overlay0 group-hover:text-ctp-red/60">[</span>
+                <span className="px-0.5" aria-hidden>
+                  ×
+                </span>
+                <span className="text-ctp-overlay0 group-hover:text-ctp-red/60">]</span>
+              </button>
+            ) : undefined
+          }
+        >
+          {phase.kind === "succeeded" ? (
+            <SuccessState final={phase.final} onClose={onClose} />
+          ) : phase.kind === "failed" ? (
+            <FailureState message={phase.message} onRetry={reset} onClose={onClose} />
+          ) : phase.kind === "idle" ? (
+            <IdleForm
+              type={type}
+              onTypeChange={setType}
+              file={file}
+              onFileChange={setFile}
+              fileInputRef={fileInputRef}
+              onSubmit={run}
+              onCancel={onClose}
+            />
+          ) : (
+            <ProgressState phase={phase} />
+          )}
+        </TuiPanel>
       </div>
     </div>
   );
@@ -277,10 +285,10 @@ function IdleForm({
       className="space-y-4"
     >
       <div>
-        <span className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-ctp-subtext0">
+        <span className="mb-2 block text-[10px] uppercase tracking-[0.15em] text-ctp-teal">
           Type
         </span>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-col gap-1.5">
           {TYPE_OPTIONS.map((opt) => {
             const active = type === opt.value;
             return (
@@ -289,13 +297,18 @@ function IdleForm({
                 type="button"
                 onClick={() => onTypeChange(opt.value)}
                 title={opt.hint}
-                className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ctp-overlay0/40 ${
-                  active
-                    ? "border-ctp-blue/50 bg-ctp-blue/10 text-ctp-blue"
-                    : "border-ctp-surface0/60 bg-ctp-base/60 text-ctp-subtext1 hover:bg-ctp-surface0/40 hover:text-ctp-text"
+                className={`flex items-center gap-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:underline ${
+                  active ? "text-ctp-mauve" : "text-ctp-subtext1 hover:text-ctp-text"
                 }`}
               >
-                {opt.label}
+                <span
+                  aria-hidden
+                  className={`inline-flex w-5 justify-center ${active ? "text-ctp-mauve" : "text-ctp-overlay0"}`}
+                >
+                  {active ? "(•)" : "( )"}
+                </span>
+                <span>{opt.label}</span>
+                <span className="text-xs text-ctp-subtext0">— {opt.hint}</span>
               </button>
             );
           })}
@@ -303,7 +316,7 @@ function IdleForm({
       </div>
 
       <div>
-        <span className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-ctp-subtext0">
+        <span className="mb-2 block text-[10px] uppercase tracking-[0.15em] text-ctp-teal">
           File
         </span>
         <input
@@ -316,9 +329,11 @@ function IdleForm({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex w-full items-center gap-3 rounded-lg border border-dashed border-ctp-surface0/80 bg-ctp-base/40 px-4 py-3 text-left text-sm text-ctp-subtext1 transition-colors duration-150 hover:border-ctp-overlay0/60 hover:bg-ctp-base/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ctp-overlay0/40"
+          className="flex w-full items-center gap-3 border border-dashed border-ctp-overlay0/50 bg-ctp-base/20 px-4 py-3 text-left text-sm text-ctp-subtext1 transition-colors duration-150 hover:border-ctp-mauve/50 hover:bg-ctp-base/40 focus-visible:outline-none focus-visible:underline"
         >
-          <FileJson className="h-4 w-4 flex-shrink-0 text-ctp-subtext0" />
+          <span aria-hidden className="text-ctp-subtext0">
+            {"{ }"}
+          </span>
           {file ? (
             <span className="flex-1 truncate">
               <span className="text-ctp-text">{file.name}</span>
@@ -330,24 +345,49 @@ function IdleForm({
         </button>
       </div>
 
-      <footer className="flex items-center justify-end gap-2 pt-1">
+      <footer className="flex items-center justify-end gap-4 pt-1">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md px-3 py-1.5 text-sm text-ctp-subtext1 transition-colors hover:bg-ctp-surface0/60 hover:text-ctp-text"
+          className="group inline-flex items-center px-1 text-sm text-ctp-subtext1 transition-colors hover:text-ctp-text focus-visible:outline-none focus-visible:underline"
         >
-          Cancel
+          <span className="text-ctp-overlay0 group-hover:text-ctp-subtext0">[</span>
+          <span className="px-1.5">Cancel</span>
+          <span className="text-ctp-overlay0 group-hover:text-ctp-subtext0">]</span>
         </button>
         <button
           type="submit"
           disabled={!file}
-          className="inline-flex items-center gap-1.5 rounded-md border border-ctp-blue/50 bg-ctp-blue/15 px-3 py-1.5 text-sm font-medium text-ctp-blue transition-colors hover:bg-ctp-blue/25 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-ctp-blue/15"
+          className="group inline-flex items-center px-1 text-sm text-ctp-mauve transition-colors hover:text-ctp-lavender focus-visible:outline-none focus-visible:underline disabled:cursor-not-allowed disabled:text-ctp-overlay0"
         >
-          <Upload className="h-3.5 w-3.5" />
-          Upload
+          <span className="text-ctp-overlay0 group-hover:text-ctp-mauve/60 group-disabled:text-ctp-overlay0">[</span>
+          <span className="px-1.5" aria-hidden>
+            ↑
+          </span>
+          <span>Upload</span>
+          <span className="ml-1 text-ctp-overlay0 group-hover:text-ctp-mauve/60 group-disabled:text-ctp-overlay0">]</span>
         </button>
       </footer>
     </form>
+  );
+}
+
+// Renders an ASCII progress bar like `[██████████░░░░░░░░░░] 50%`. The bar
+// width is fixed (PROGRESS_CELLS) so a monospace render aligns each step.
+const PROGRESS_CELLS = 28;
+
+function AsciiProgressBar({ pct }: { pct: number }) {
+  const clamped = Math.max(0, Math.min(100, pct));
+  const filled = Math.round((clamped / 100) * PROGRESS_CELLS);
+  const empty = PROGRESS_CELLS - filled;
+  return (
+    <span className="font-medium tabular-nums text-ctp-mauve">
+      <span className="text-ctp-overlay0">[</span>
+      <span>{"█".repeat(filled)}</span>
+      <span className="text-ctp-overlay0/60">{"░".repeat(empty)}</span>
+      <span className="text-ctp-overlay0">]</span>
+      <span className="ml-2 text-ctp-subtext1">{clamped.toFixed(0)}%</span>
+    </span>
   );
 }
 
@@ -359,34 +399,48 @@ function ProgressState({ phase }: { phase: Phase }) {
     { key: "polling", label: "Validating records" },
   ];
   const currentIdx = steps.findIndex((s) => s.key === phase.kind);
+  // Progress = completed steps + half-credit for the active step.
+  const pct = ((currentIdx + 0.5) / steps.length) * 100;
 
   return (
-    <div className="space-y-2.5">
-      {steps.map((step, idx) => {
-        const status: "done" | "active" | "pending" =
-          idx < currentIdx ? "done" : idx === currentIdx ? "active" : "pending";
-        return (
-          <div key={step.key} className="flex items-center gap-3 text-sm">
-            <StepDot status={status} />
-            <span
-              className={
-                status === "done"
-                  ? "text-ctp-subtext1"
-                  : status === "active"
-                    ? "text-ctp-text"
-                    : "text-ctp-subtext0"
-              }
-            >
-              {step.label}
-              {step.key === "polling" && phase.kind === "polling" ? (
-                <span className="ml-2 font-mono text-xs text-ctp-subtext0">
-                  (attempt {phase.attempts})
-                </span>
-              ) : null}
-            </span>
-          </div>
-        );
-      })}
+    <div className="space-y-4">
+      <div className="text-center text-sm">
+        <AsciiProgressBar pct={pct} />
+      </div>
+      <ul className="space-y-2 text-sm">
+        {steps.map((step, idx) => {
+          const status: "done" | "active" | "pending" =
+            idx < currentIdx ? "done" : idx === currentIdx ? "active" : "pending";
+          const marker = status === "done" ? "✓" : status === "active" ? "▸" : "·";
+          const markerColor =
+            status === "done"
+              ? "text-ctp-green"
+              : status === "active"
+                ? "text-ctp-mauve"
+                : "text-ctp-overlay0";
+          const labelColor =
+            status === "done"
+              ? "text-ctp-subtext1"
+              : status === "active"
+                ? "text-ctp-text"
+                : "text-ctp-subtext0";
+          return (
+            <li key={step.key} className="flex items-center gap-3">
+              <span aria-hidden className={`w-4 text-center ${markerColor}`}>
+                {marker}
+              </span>
+              <span className={labelColor}>
+                {step.label}
+                {step.key === "polling" && phase.kind === "polling" ? (
+                  <span className="ml-2 text-xs text-ctp-subtext0">
+                    (attempt {phase.attempts})
+                  </span>
+                ) : null}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
@@ -400,12 +454,16 @@ function SuccessState({
 }) {
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2.5 rounded-lg border border-ctp-green/30 bg-ctp-green/5 p-3">
-        <CheckCircle2 className="h-5 w-5 text-ctp-green" />
+      <div className="flex items-center gap-2.5 border border-dashed border-ctp-green/40 p-3">
+        <span aria-hidden className="text-lg text-ctp-green">
+          ✓
+        </span>
         <div>
-          <div className="text-sm font-medium text-ctp-green">Upload succeeded</div>
-          <div className="text-xs text-ctp-subtext0">
-            type: <span className="font-mono">{final.type}</span>
+          <div className="text-sm font-medium text-ctp-green">
+            <TuiStatusPill kind="ok">SUCCEEDED</TuiStatusPill>
+          </div>
+          <div className="mt-1 text-xs text-ctp-subtext0">
+            type: <span className="text-ctp-text">{final.type}</span>
           </div>
         </div>
       </div>
@@ -423,9 +481,11 @@ function SuccessState({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-md border border-ctp-surface0/60 bg-ctp-base/60 px-3 py-1.5 text-sm text-ctp-text transition-colors hover:bg-ctp-surface0/60"
+          className="group inline-flex items-center px-1 text-sm text-ctp-text transition-colors hover:text-ctp-mauve focus-visible:outline-none focus-visible:underline"
         >
-          Done
+          <span className="text-ctp-overlay0 group-hover:text-ctp-mauve/60">[</span>
+          <span className="px-1.5">Done</span>
+          <span className="text-ctp-overlay0 group-hover:text-ctp-mauve/60">]</span>
         </button>
       </footer>
     </div>
@@ -443,27 +503,35 @@ function FailureState({
 }) {
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-2.5 rounded-lg border border-ctp-red/30 bg-ctp-red/5 p-3">
-        <XCircle className="h-5 w-5 flex-shrink-0 text-ctp-red" />
+      <div className="flex items-start gap-2.5 border border-dashed border-ctp-red/40 p-3">
+        <span aria-hidden className="text-lg text-ctp-red">
+          ✗
+        </span>
         <div>
-          <div className="text-sm font-medium text-ctp-red">Upload failed</div>
+          <div className="text-sm font-medium">
+            <TuiStatusPill kind="crit">FAILED</TuiStatusPill>
+          </div>
           <div className="mt-1 break-words text-xs text-ctp-red/80">{message}</div>
         </div>
       </div>
-      <footer className="flex items-center justify-end gap-2 pt-1">
+      <footer className="flex items-center justify-end gap-4 pt-1">
         <button
           type="button"
           onClick={onClose}
-          className="rounded-md px-3 py-1.5 text-sm text-ctp-subtext1 transition-colors hover:bg-ctp-surface0/60 hover:text-ctp-text"
+          className="group inline-flex items-center px-1 text-sm text-ctp-subtext1 transition-colors hover:text-ctp-text focus-visible:outline-none focus-visible:underline"
         >
-          Close
+          <span className="text-ctp-overlay0 group-hover:text-ctp-subtext0">[</span>
+          <span className="px-1.5">Close</span>
+          <span className="text-ctp-overlay0 group-hover:text-ctp-subtext0">]</span>
         </button>
         <button
           type="button"
           onClick={onRetry}
-          className="rounded-md border border-ctp-blue/50 bg-ctp-blue/15 px-3 py-1.5 text-sm font-medium text-ctp-blue transition-colors hover:bg-ctp-blue/25"
+          className="group inline-flex items-center px-1 text-sm text-ctp-mauve transition-colors hover:text-ctp-lavender focus-visible:outline-none focus-visible:underline"
         >
-          Try again
+          <span className="text-ctp-overlay0 group-hover:text-ctp-mauve/60">[</span>
+          <span className="px-1.5">Try again</span>
+          <span className="text-ctp-overlay0 group-hover:text-ctp-mauve/60">]</span>
         </button>
       </footer>
     </div>
@@ -473,20 +541,6 @@ function FailureState({
 // =============================================================================
 // Bits
 // =============================================================================
-
-function StepDot({ status }: { status: "done" | "active" | "pending" }) {
-  if (status === "done") {
-    return (
-      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-ctp-green/15 text-ctp-green">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-      </span>
-    );
-  }
-  if (status === "active") {
-    return <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-ctp-blue" />;
-  }
-  return <span className="h-2.5 w-2.5 rounded-full border border-ctp-surface0" />;
-}
 
 function Stat({
   label,
@@ -500,10 +554,9 @@ function Stat({
   const valueClass =
     tone === "good" ? "text-ctp-green" : tone === "warn" ? "text-ctp-peach" : "text-ctp-text";
   return (
-    <div className="rounded-md border border-ctp-surface0/60 bg-ctp-base/60 p-3">
-      <dt className="font-mono text-[10px] uppercase tracking-wider text-ctp-subtext0">{label}</dt>
-      <dd className={`mt-1 text-xl font-semibold tabular-nums ${valueClass}`}>{value}</dd>
-    </div>
+    <TuiPanel title={label} className="!pt-4 !pb-3">
+      <div className={`text-xl font-semibold tabular-nums ${valueClass}`}>{value}</div>
+    </TuiPanel>
   );
 }
 

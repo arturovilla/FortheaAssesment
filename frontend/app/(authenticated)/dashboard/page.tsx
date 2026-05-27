@@ -15,14 +15,16 @@ import { UploadData } from "./_components/upload-data";
 export default function DashboardPage() {
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-dashed border-ctp-overlay0/30 pb-4">
         <div>
-          <h1 className="text-lg font-semibold text-ctp-text">Performance</h1>
-          <p className="text-xs text-ctp-subtext0">
+          <h1 className="text-sm font-semibold uppercase tracking-[0.18em] text-ctp-teal">
+            ── PERFORMANCE ──
+          </h1>
+          <p className="mt-1 text-xs text-ctp-subtext0">
             Marketing KPIs alongside macro context for the selected period.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-6">
           <UploadData />
           <RangeSwitcher />
         </div>

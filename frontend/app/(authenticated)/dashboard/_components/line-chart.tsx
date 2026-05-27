@@ -137,7 +137,9 @@ export function LineChart({
   }, [series, anomalies, innerWidth, innerHeight]);
 
   // d3 line generator. `.defined()` makes the path skip null values cleanly
-  // instead of stitching across a gap.
+  // instead of stitching across a gap. TUI restyle uses curveLinear (straight
+  // segments) instead of the previous monotone-cubic — matches the reference
+  // image's blocky line aesthetic.
   const lineGen = useMemo(
     () =>
       d3
@@ -145,7 +147,7 @@ export function LineChart({
         .defined((d) => d.value !== null && Number.isFinite(d.value))
         .x((d) => xScale(d.date))
         .y((d) => yScale(d.value as number))
-        .curve(d3.curveMonotoneX),
+        .curve(d3.curveLinear),
     [xScale, yScale],
   );
 
@@ -215,7 +217,8 @@ export function LineChart({
           className="overflow-visible"
         >
           <g transform={`translate(${MARGIN.left},${MARGIN.top})`}>
-            {/* Horizontal gridlines, behind everything */}
+            {/* Horizontal gridlines — dashed teal at low opacity, behind
+                everything. Matches the reference image's dashed grid. */}
             {yTicks.map((tick) => (
               <line
                 key={tick}
@@ -223,13 +226,13 @@ export function LineChart({
                 x2={innerWidth}
                 y1={yScale(tick)}
                 y2={yScale(tick)}
-                stroke="var(--color-ctp-surface0)"
-                strokeOpacity={0.35}
-                strokeDasharray="3 3"
+                stroke="var(--color-ctp-teal)"
+                strokeOpacity={0.18}
+                strokeDasharray="2 4"
               />
             ))}
 
-            {/* Y-axis labels (rendered as plain text so we keep React control) */}
+            {/* Y-axis labels — teal monospace digits */}
             {yTicks.map((tick) => (
               <text
                 key={tick}
@@ -237,7 +240,7 @@ export function LineChart({
                 y={yScale(tick)}
                 dy="0.32em"
                 textAnchor="end"
-                className="fill-ctp-subtext0 text-[10px] tabular-nums"
+                className="fill-ctp-teal/70 text-[10px] tabular-nums"
               >
                 {formatY(tick)}
               </text>
@@ -252,33 +255,53 @@ export function LineChart({
               tickFormat={formatX}
             />
 
-            {/* The series lines */}
+            {/* The series lines — slightly heavier stroke; linear curve means
+                square joints fit the TUI grid better than rounded. */}
             {series.map((s) => (
               <path
                 key={s.id}
                 d={lineGen(s.data) ?? ""}
                 fill="none"
                 stroke={s.color}
-                strokeWidth={1.8}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
-            ))}
-
-            {/* Anomaly markers, on top of the line */}
-            {anomalies.map((a, i) => (
-              <circle
-                key={`${a.date.getTime()}-${i}`}
-                cx={xScale(a.date)}
-                cy={yScale(a.value)}
-                r={5}
-                fill="var(--color-ctp-red)"
-                stroke="var(--color-ctp-crust)"
                 strokeWidth={1.5}
+                strokeLinejoin="miter"
+                strokeLinecap="square"
               />
             ))}
 
-            {/* Hover crosshair + dots */}
+            {/* Anomaly markers — × glyphs (red) instead of circles. Two crossed
+                <line>s give crisper rendering than an SVG <text>, and the
+                shape stays the same as the stroke regardless of font. */}
+            {anomalies.map((a, i) => {
+              const cx = xScale(a.date);
+              const cy = yScale(a.value);
+              const r = 5;
+              return (
+                <g key={`${a.date.getTime()}-${i}`} pointerEvents="none">
+                  <line
+                    x1={cx - r}
+                    y1={cy - r}
+                    x2={cx + r}
+                    y2={cy + r}
+                    stroke="var(--color-ctp-red)"
+                    strokeWidth={1.5}
+                    strokeLinecap="square"
+                  />
+                  <line
+                    x1={cx - r}
+                    y1={cy + r}
+                    x2={cx + r}
+                    y2={cy - r}
+                    stroke="var(--color-ctp-red)"
+                    strokeWidth={1.5}
+                    strokeLinecap="square"
+                  />
+                </g>
+              );
+            })}
+
+            {/* Hover crosshair + markers — crosshair in mauve, dots become
+                small filled squares for the TUI grid feel. */}
             {hoverDate && hoverPoints ? (
               <g pointerEvents="none">
                 <line
@@ -286,17 +309,19 @@ export function LineChart({
                   x2={xScale(hoverDate)}
                   y1={0}
                   y2={innerHeight}
-                  stroke="var(--color-ctp-overlay0)"
+                  stroke="var(--color-ctp-mauve)"
+                  strokeOpacity={0.6}
                   strokeDasharray="2 3"
                   strokeWidth={1}
                 />
                 {hoverPoints.map((hp) =>
                   hp ? (
-                    <circle
+                    <rect
                       key={hp.series.id}
-                      cx={xScale(hp.point.date)}
-                      cy={yScale(hp.point.value as number)}
-                      r={4}
+                      x={xScale(hp.point.date) - 3}
+                      y={yScale(hp.point.value as number) - 3}
+                      width={6}
+                      height={6}
                       fill={hp.series.color}
                       stroke="var(--color-ctp-crust)"
                       strokeWidth={1.5}
@@ -365,12 +390,21 @@ function D3Axis({ kind, scale, transform, ticks, tickFormat }: D3AxisProps) {
     if (tickFormat) axisGen.tickFormat(tickFormat as never);
     axisGen.tickSizeOuter(0).tickPadding(8);
     sel.call(axisGen as never);
-    // Strip d3's default styles; let CSS classes drive the look.
-    sel.selectAll("path").attr("stroke", "var(--color-ctp-surface0)");
-    sel.selectAll("line").attr("stroke", "var(--color-ctp-surface0)");
+    // Strip d3's default styles. TUI tone: dashed teal baseline + tick marks,
+    // teal labels. Inherits the page's IBM Plex Mono font naturally.
+    sel
+      .selectAll("path")
+      .attr("stroke", "var(--color-ctp-teal)")
+      .attr("stroke-opacity", "0.4")
+      .attr("stroke-dasharray", "2 4");
+    sel
+      .selectAll("line")
+      .attr("stroke", "var(--color-ctp-teal)")
+      .attr("stroke-opacity", "0.35");
     sel
       .selectAll("text")
-      .attr("fill", "var(--color-ctp-subtext0)")
+      .attr("fill", "var(--color-ctp-teal)")
+      .attr("fill-opacity", "0.7")
       .attr("font-size", "10px");
   }, [scale, kind, ticks, tickFormat]);
   return <g ref={ref} transform={transform} />;
@@ -406,14 +440,14 @@ function Tooltip({
   return (
     <div
       role="status"
-      className="pointer-events-none absolute z-10 rounded-lg border border-ctp-surface0/80 bg-ctp-mantle/95 px-3 py-2 text-xs shadow-xl shadow-black/40 backdrop-blur"
+      className="pointer-events-none absolute z-10 border border-dashed border-ctp-mauve/60 bg-ctp-crust/95 px-3 py-2 text-xs shadow-xl shadow-black/50 backdrop-blur"
       style={{
         left,
         top: MARGIN.top,
         width: TOOLTIP_W,
       }}
     >
-      <div className="font-mono text-[10px] uppercase tracking-wider text-ctp-subtext0">
+      <div className="text-[10px] uppercase tracking-[0.12em] text-ctp-teal">
         {formatX(hoverDate)}
       </div>
       <div className="mt-1.5 space-y-1">
@@ -422,7 +456,8 @@ function Tooltip({
             <div key={hp.series.id} className="flex items-center justify-between gap-3">
               <span className="flex items-center gap-1.5 text-ctp-subtext1">
                 <span
-                  className="inline-block h-2 w-2 rounded-full"
+                  aria-hidden
+                  className="inline-block h-2 w-2"
                   style={{ background: hp.series.color }}
                 />
                 {hp.series.label}
@@ -435,8 +470,8 @@ function Tooltip({
         )}
       </div>
       {hoverAnomaly ? (
-        <div className="mt-2 flex items-center gap-1.5 rounded-md border border-ctp-red/30 bg-ctp-red/10 px-2 py-1 text-[11px] text-ctp-red">
-          <span className="inline-block h-2 w-2 rounded-full bg-ctp-red" />
+        <div className="mt-2 flex items-center gap-1.5 border border-dashed border-ctp-red/40 px-2 py-1 text-[11px] text-ctp-red">
+          <span aria-hidden>×</span>
           {hoverAnomaly.label}
         </div>
       ) : null}
@@ -463,16 +498,16 @@ function LoadingOverlay({ height }: { height: number }) {
         {[0.25, 0.5, 0.75].map((frac) => (
           <div
             key={frac}
-            className="absolute left-0 right-0 border-t border-dashed border-ctp-surface0/30"
+            className="absolute left-0 right-0 border-t border-dashed border-ctp-teal/20"
             style={{ top: `${frac * 100}%` }}
           />
         ))}
-        {/* Solid baseline at the bottom = x-axis */}
-        <div className="absolute bottom-0 left-0 right-0 border-t border-ctp-surface0/50" />
+        {/* Dashed baseline at the bottom = x-axis */}
+        <div className="absolute bottom-0 left-0 right-0 border-t border-dashed border-ctp-teal/30" />
       </div>
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="animate-pulse rounded-md bg-ctp-surface0/40 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-ctp-subtext0">
-          loading data
+        <div className="animate-pulse border border-dashed border-ctp-teal/40 px-3 py-1.5 text-[11px] uppercase tracking-[0.15em] text-ctp-teal">
+          loading data…
         </div>
       </div>
     </div>
@@ -481,7 +516,7 @@ function LoadingOverlay({ height }: { height: number }) {
 
 function EmptyOverlay({ message }: { message: string }) {
   return (
-    <div className="flex h-full w-full items-center justify-center rounded-lg border border-dashed border-ctp-surface0/60 text-xs text-ctp-subtext0">
+    <div className="flex h-full w-full items-center justify-center border border-dashed border-ctp-overlay0/40 text-xs text-ctp-subtext0">
       {message}
     </div>
   );

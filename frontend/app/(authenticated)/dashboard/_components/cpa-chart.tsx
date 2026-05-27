@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react";
 
 import type { AnomalyRow, PerformanceRow } from "@/lib/api";
+import { TuiPanel } from "@/app/(authenticated)/_components/tui/panel";
 import { formatCpa } from "@/lib/format";
 import { useAnomalies, usePerformance } from "@/lib/queries";
 import { useRange } from "@/lib/use-range";
@@ -64,19 +65,15 @@ export function CpaChart() {
 
   return (
     <>
-      <section className="rounded-xl border border-ctp-surface0/60 bg-ctp-base/60 p-5">
-        <header className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-ctp-text">CPA over time</h2>
-            <p className="text-xs text-ctp-subtext0">
-              Last {days} days · anomalies overlaid in red
-            </p>
-          </div>
+      <TuiPanel
+        title="CPA over time"
+        subtitle={`Last ${days} days · anomalies overlaid in red`}
+        actions={
           <ExpandButton onClick={() => setIsExpanded(true)} label="Expand CPA chart" />
-        </header>
-
+        }
+      >
         {hasError ? (
-          <div className="rounded-md border border-ctp-red/30 bg-ctp-red/5 p-4 text-xs text-ctp-red">
+          <div className="border border-dashed border-ctp-red/40 p-4 text-xs text-ctp-red">
             Failed to load CPA data.
           </div>
         ) : (
@@ -89,7 +86,7 @@ export function CpaChart() {
             emptyMessage="No CPA data for this period (no conversions logged)."
           />
         )}
-      </section>
+      </TuiPanel>
 
       {isExpanded ? (
         <ExpandedPanel

@@ -1,24 +1,24 @@
 "use client";
 
 // Shared modal + button + stats helpers for the "click to expand" pattern.
+// TUI restyle: bracket button trigger, dashed modal frame, ── TITLE ── cap.
 //
 // Every chart panel (CPA, ROAS, Macro) and the Anomalies panel share:
 //   - <ExpandButton/> in their header — opens the modal
-//   - <ExpandedPanel/> as the modal shell — backdrop, Esc/click-outside,
-//     wider than the upload dialog (max-w-5xl) so charts breathe
-//   - <StatsRow/> at the top of the expanded chart view — Avg / Min / Max /
-//     Data points computed from the same data series the chart renders
+//   - <ExpandedPanel/> as the modal shell — backdrop, Esc/click-outside
+//   - <StatsRow/> at the top of the expanded chart view
 //
 // Kept in one file because they're a coordinated set; importing one usually
 // means importing the others.
 
-import { Maximize2, X } from "lucide-react";
 import { useEffect } from "react";
+
+import { TuiPanel } from "@/app/(authenticated)/_components/tui/panel";
 
 import type { LineChartDatum } from "./line-chart";
 
 // =============================================================================
-// ExpandButton
+// ExpandButton — `[ ⛶ ]` bracket button rendered in a panel's actions slot.
 // =============================================================================
 
 export function ExpandButton({
@@ -34,9 +34,13 @@ export function ExpandButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="rounded-md border border-ctp-surface0/60 bg-ctp-base/60 p-1.5 text-ctp-subtext0 transition-colors duration-150 hover:bg-ctp-surface0/60 hover:text-ctp-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ctp-overlay0/40"
+      className="group inline-flex items-center px-1 text-xs text-ctp-subtext1 transition-colors hover:text-ctp-text focus-visible:outline-none focus-visible:underline"
     >
-      <Maximize2 className="h-3.5 w-3.5" />
+      <span className="text-ctp-overlay0 group-hover:text-ctp-subtext0">[</span>
+      <span className="px-0.5" aria-hidden>
+        ⛶
+      </span>
+      <span className="text-ctp-overlay0 group-hover:text-ctp-subtext0">]</span>
     </button>
   );
 }
@@ -81,25 +85,30 @@ export function ExpandedPanel({
         onClick={onClose}
       />
 
-      {/* Panel */}
-      <div className="relative z-10 max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-xl border border-ctp-surface0/80 bg-ctp-mantle p-6 shadow-2xl shadow-black/60">
-        <header className="mb-5 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-ctp-text">{title}</h2>
-            {subtitle ? (
-              <p className="mt-0.5 text-xs text-ctp-subtext0">{subtitle}</p>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-md p-1 text-ctp-subtext0 transition-colors hover:bg-ctp-surface0/60 hover:text-ctp-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ctp-overlay0/40"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </header>
-        {children}
+      {/* Panel — TuiPanel handles the dashed frame + title cap. Close button
+          sits in the actions slot so it composes with the title row. */}
+      <div className="relative z-10 max-h-[90vh] w-full max-w-5xl overflow-y-auto">
+        <TuiPanel
+          title={title}
+          subtitle={subtitle}
+          tone="active"
+          actions={
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="group inline-flex items-center text-xs text-ctp-subtext1 transition-colors hover:text-ctp-red focus-visible:outline-none focus-visible:underline"
+            >
+              <span className="text-ctp-overlay0 group-hover:text-ctp-red/60">[</span>
+              <span className="px-0.5" aria-hidden>
+                ×
+              </span>
+              <span className="text-ctp-overlay0 group-hover:text-ctp-red/60">]</span>
+            </button>
+          }
+        >
+          {children}
+        </TuiPanel>
       </div>
     </div>
   );
@@ -155,13 +164,10 @@ export function StatsRow({
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-ctp-surface0/60 bg-ctp-base/60 p-3">
-      <div className="font-mono text-[10px] uppercase tracking-wider text-ctp-subtext0">
-        {label}
-      </div>
-      <div className="mt-1 text-xl font-semibold tabular-nums text-ctp-text">
+    <TuiPanel title={label} className="!pt-4 !pb-3">
+      <div className="text-xl font-semibold tabular-nums text-ctp-text">
         {value}
       </div>
-    </div>
+    </TuiPanel>
   );
 }

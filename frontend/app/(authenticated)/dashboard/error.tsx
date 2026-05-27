@@ -7,8 +7,9 @@
 // dashboard layout itself crashing, an unhandled state in <Providers>.
 // If a panel-level boundary catches the error, this never renders.
 
-import { AlertOctagon, RefreshCw } from "lucide-react";
 import { useEffect } from "react";
+
+import { TuiPanel } from "@/app/(authenticated)/_components/tui/panel";
 
 export default function DashboardError({
   error,
@@ -23,9 +24,11 @@ export default function DashboardError({
   }, [error]);
 
   return (
-    <div className="rounded-xl border border-ctp-red/30 bg-ctp-red/5 p-6">
+    <TuiPanel title="Dashboard error" tone="crit">
       <div className="flex items-center gap-2">
-        <AlertOctagon className="h-5 w-5 text-ctp-red" />
+        <span aria-hidden className="text-ctp-red">
+          ✗
+        </span>
         <h1 className="text-base font-semibold text-ctp-red">
           The dashboard failed to load
         </h1>
@@ -36,18 +39,22 @@ export default function DashboardError({
       </p>
       <details className="mt-3 text-xs">
         <summary className="cursor-pointer text-ctp-red/60">technical detail</summary>
-        <pre className="mt-1 max-h-40 overflow-auto rounded bg-ctp-mantle/60 p-3 text-[11px] text-ctp-subtext1">
+        <pre className="mt-1 max-h-40 overflow-auto border border-dashed border-ctp-red/30 bg-ctp-mantle/60 p-3 text-[11px] text-ctp-subtext1">
           {error.message}
         </pre>
       </details>
       <button
         type="button"
         onClick={reset}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-ctp-red/30 bg-ctp-red/10 px-3 py-2 text-sm font-medium text-ctp-red transition-colors hover:bg-ctp-red/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ctp-red/40"
+        className="group mt-4 inline-flex items-center px-1 text-sm text-ctp-red transition-colors hover:text-ctp-peach focus-visible:outline-none focus-visible:underline"
       >
-        <RefreshCw className="h-4 w-4" />
-        Try again
+        <span className="text-ctp-red/40 group-hover:text-ctp-peach/60">[</span>
+        <span className="px-1.5" aria-hidden>
+          ↻
+        </span>
+        <span>Try again</span>
+        <span className="ml-1 text-ctp-red/40 group-hover:text-ctp-peach/60">]</span>
       </button>
-    </div>
+    </TuiPanel>
   );
 }

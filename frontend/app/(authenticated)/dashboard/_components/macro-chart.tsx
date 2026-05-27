@@ -14,6 +14,7 @@
 import { useState } from "react";
 
 import type { MacroSeriesKey } from "@/lib/api";
+import { TuiPanel } from "@/app/(authenticated)/_components/tui/panel";
 import { useMacro } from "@/lib/queries";
 import { useRange } from "@/lib/use-range";
 
@@ -107,22 +108,19 @@ export function MacroChart() {
 
   return (
     <>
-      <section className="rounded-xl border border-ctp-surface0/60 bg-ctp-base/60 p-5">
-        <header className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-ctp-text">Macro context</h2>
-            <p className="text-xs text-ctp-subtext0">
-              {config.short} · last {days} days · source: FRED
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <SeriesPicker selected={selectedKey} onChange={setSelectedKey} />
-            <ExpandButton onClick={() => setIsExpanded(true)} label="Expand macro chart" />
-          </div>
-        </header>
+      <TuiPanel
+        title="Macro context"
+        subtitle={`${config.short} · last ${days} days · source: FRED`}
+        actions={
+          <ExpandButton onClick={() => setIsExpanded(true)} label="Expand macro chart" />
+        }
+      >
+        <div className="mb-4 flex items-center justify-end">
+          <SeriesPicker selected={selectedKey} onChange={setSelectedKey} />
+        </div>
 
         {macro.error ? (
-          <div className="rounded-md border border-ctp-red/30 bg-ctp-red/5 p-4 text-xs text-ctp-red">
+          <div className="border border-dashed border-ctp-red/40 p-4 text-xs text-ctp-red">
             Failed to load macro data.
           </div>
         ) : (
@@ -134,7 +132,7 @@ export function MacroChart() {
             emptyMessage={`No ${config.label} observations in the last ${days} days. Try a longer range or a different series.`}
           />
         )}
-      </section>
+      </TuiPanel>
 
       {isExpanded ? (
         <ExpandedPanel
@@ -171,22 +169,22 @@ function SeriesPicker({
 }) {
   return (
     <label className="inline-flex items-center gap-2 text-xs text-ctp-subtext0">
-      <span>series</span>
+      <span className="uppercase tracking-[0.12em]">SERIES:</span>
+      <span className="text-ctp-overlay0">[</span>
       <select
         value={selected}
         onChange={(e) => onChange(e.target.value as MacroSeriesKey)}
-        // Styled-native select: matches the Catppuccin tokens used by the
-        // tenant selector and range switcher. Browsers will still show
-        // their own dropdown chrome on the open menu — acceptable for the
-        // assessment; we can build a custom popover later if needed.
-        className="cursor-pointer rounded-md border border-ctp-surface0/60 bg-ctp-base/80 px-2 py-1 text-xs font-medium text-ctp-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ctp-overlay0/40"
+        // Styled-native select. Browsers still show their own dropdown chrome
+        // on the open menu; the inline brackets keep the closed state on-grid.
+        className="cursor-pointer border-none bg-transparent text-xs font-medium text-ctp-text focus-visible:outline-none focus-visible:underline"
       >
         {SERIES_CATALOG.map((s) => (
-          <option key={s.key} value={s.key}>
+          <option key={s.key} value={s.key} className="bg-ctp-crust text-ctp-text">
             {s.label}
           </option>
         ))}
       </select>
+      <span className="text-ctp-overlay0">]</span>
     </label>
   );
 }

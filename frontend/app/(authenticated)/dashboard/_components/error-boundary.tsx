@@ -12,8 +12,9 @@
 // usual minimal class-based implementation. No third-party dep needed for a
 // surface this small.
 
-import { AlertOctagon, RefreshCw } from "lucide-react";
 import { Component, type ErrorInfo, type ReactNode } from "react";
+
+import { TuiPanel } from "@/app/(authenticated)/_components/tui/panel";
 
 interface ErrorBoundaryProps {
   // Shown in the fallback ("KPIs failed", "CPA chart failed"). Keep short.
@@ -43,9 +44,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
     if (!this.state.error) return this.props.children;
 
     return (
-      <div className="rounded-xl border border-ctp-red/30 bg-ctp-red/5 p-5">
+      <TuiPanel title={`${this.props.label ?? "Panel"} failed`} tone="crit">
         <div className="flex items-center gap-2">
-          <AlertOctagon className="h-4 w-4 text-ctp-red" />
+          <span aria-hidden className="text-ctp-red">
+            ✗
+          </span>
           <h2 className="text-sm font-semibold text-ctp-red">
             {this.props.label ?? "This panel"} failed
           </h2>
@@ -55,19 +58,23 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
         </p>
         <details className="mt-2 text-xs">
           <summary className="cursor-pointer text-ctp-red/60">technical detail</summary>
-          <pre className="mt-1 max-h-32 overflow-auto rounded bg-ctp-mantle/60 p-2 text-[10px] text-ctp-subtext1">
+          <pre className="mt-1 max-h-32 overflow-auto border border-dashed border-ctp-red/30 bg-ctp-mantle/60 p-2 text-[10px] text-ctp-subtext1">
             {this.state.error.message}
           </pre>
         </details>
         <button
           type="button"
           onClick={this.reset}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-ctp-red/30 bg-ctp-red/10 px-2.5 py-1.5 text-xs font-medium text-ctp-red transition-colors hover:bg-ctp-red/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ctp-red/40"
+          className="group mt-3 inline-flex items-center px-1 text-xs text-ctp-red transition-colors hover:text-ctp-peach focus-visible:outline-none focus-visible:underline"
         >
-          <RefreshCw className="h-3.5 w-3.5" />
-          Try again
+          <span className="text-ctp-red/40 group-hover:text-ctp-peach/60">[</span>
+          <span className="px-1.5" aria-hidden>
+            ↻
+          </span>
+          <span>Try again</span>
+          <span className="ml-1 text-ctp-red/40 group-hover:text-ctp-peach/60">]</span>
         </button>
-      </div>
+      </TuiPanel>
     );
   }
 }
